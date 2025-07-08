@@ -5,7 +5,7 @@ import pygame
 import sys
 import os
 from moviepy.editor import ImageSequenceClip
-from models.terrain import TerrainType
+from src.models.terrain import TerrainType
 
 class Renderer:
     def __init__(self, engine, tile_size=32, fps=2, record=False, output='battle.mp4'):

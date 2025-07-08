@@ -2,10 +2,9 @@
 Entry point for Battle Simulator
 """
 import argparse
-from engine import Engine
-from models.regiment import Regiment
-from models.terrain import Terrain, TerrainType
-from models.regiment import Regiment, AttackType, SpecialAbility
+from src.engine import Engine
+from src.models.regiment import Regiment, AttackType, SpecialAbility
+from src.models.terrain import Terrain, TerrainType
 import sys
 
 
@@ -51,7 +50,7 @@ def main():
     # TODO: initialize terrain and regiments here or load scenario
     if args.render:
         try:
-            from renderer import Renderer
+            from src.renderer import Renderer
         except ImportError:
             print("Renderer dependencies not installed. Please install pygame and moviepy.")
             sys.exit(1)

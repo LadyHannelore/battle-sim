@@ -1,8 +1,8 @@
 """
 Core engine: controls turn loop and combat phases
 """
-from models.regiment import Regiment, AttackType
-from models.terrain import Terrain
+from src.models.regiment import Regiment, AttackType
+from src.models.terrain import Terrain
 import math
 
 
