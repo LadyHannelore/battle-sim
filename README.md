@@ -7,6 +7,9 @@ Python-based turn-based battle and siege simulator.
 python -m venv .venv
 .\\.venv\\Scripts\\Activate.ps1
 pip install -r requirements.txt
+# generate placeholder assets:
+python src/assets/generate_tiles.py
+python src/assets/generate_sprites.py
 ```
 
 ## Running
