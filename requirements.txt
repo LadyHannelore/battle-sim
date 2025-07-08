@@ -1,0 +1,4 @@
+# external dependencies for visualization
+pygame
+moviepy
+pytest
