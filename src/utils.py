@@ -5,13 +5,22 @@ import random
 
 
 def calculate_ranged_damage(attacker, defender, terrain, distance):
-    # ...existing code...
-    return 0
+    """
+    Compute ranged damage as a function of attacker speed and defender defense.
+    """
+    base = attacker.speed * 1.0
+    # reduce damage by half of defender defense
+    dmg = base - (defender.defense * 0.5)
+    return max(1, int(dmg))
 
 
 def calculate_melee_damage(attacker, defender, terrain):
-    # ...existing code...
-    return 0
+    """
+    Compute melee damage based on attacker speed and defense values.
+    """
+    base = attacker.speed + attacker.defense
+    dmg = base - defender.defense
+    return max(1, int(dmg))
 
 
 def roll_accuracy(base, distance):
