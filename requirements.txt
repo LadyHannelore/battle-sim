@@ -1,5 +1,0 @@
-# external dependencies for visualization
-pillow
-pygame
-moviepy
-pytest
