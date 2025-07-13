@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+                     <div class="feature-card">
+                        <h3>🎯 Strategic Warfare</h3>
+                        <p>Use diverse unit types: Infantry, Archers, Cavalry, Shock troops, and Chariots</p>
+                        <button class="btn-primary" onclick="showPage('battle')">Start Fighting</button>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🏛️ War System</h3>
+                        <p>Declare wars with Casus Belli: Skirmish, Conquest, Raid, or Subjugation</p>
+                        <button class="btn-primary" onclick="showPage('army-builder')">Plan Campaign</button>
+                    </div>eta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Simulation System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <h1 class="nav-title">⚔️ Battle Sim</h1>
+                <div class="nav-buttons">
+                    <button class="nav-btn active" data-page="home">Home</button>
+                    <button class="nav-btn" data-page="army-builder">Army Builder</button>
+                    <button class="nav-btn" data-page="battle">Battle</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Home Page -->
+        <div id="home-page" class="page active">
+            <div class="container">
+                <div class="hero">
+                    <h1>Welcome to the Battle Simulation System</h1>
+                    <p>Experience strategic warfare with tactical combat on a 9×9 battlefield</p>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>🛠️ Army Builder</h3>
+                        <p>Create and customize your own army with different unit compositions</p>
+                        <button class="btn-primary" onclick="showPage('army-builder')">Build Army</button>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>⚔️ Tactical Combat</h3>
+                        <p>Command armies on a 9×9 chess-like battlefield with unique unit types</p>
+                        <button class="btn-primary" onclick="showPage('battle')">Enter Battle</button>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>� Strategic Warfare</h3>
+                        <p>Use diverse unit types: Infantry, Archers, Cavalry, Shock troops, and Chariots</p>
+                        <button class="btn-primary" onclick="showPage('battle')">Start Fighting</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Army Builder Page -->
+        <div id="army-builder-page" class="page">
+            <div class="container">
+                <h2>Army Builder & War Declaration</h2>
+                
+                <!-- War Declaration Section -->
+                <div class="war-declaration-section">
+                    <h3>Declare War</h3>
+                    <div class="casus-belli-selector">
+                        <div class="casus-card" data-type="skirmish" onclick="selectCasus('skirmish')">
+                            <h4>🗡️ Skirmish</h4>
+                            <p><strong>Goal:</strong> Capture 1-20 tiles</p>
+                            <p><strong>Victory:</strong> Hold >50% of declared tiles by Turn 4</p>
+                            <p><strong>Reward:</strong> Captured tiles + 1 loot per 3 tiles</p>
+                        </div>
+                        
+                        <div class="casus-card" data-type="conquest" onclick="selectCasus('conquest')">
+                            <h4>🏰 Conquest</h4>
+                            <p><strong>Goal:</strong> Capture 1-3 settlements</p>
+                            <p><strong>Victory:</strong> Capture settlements within 6 turns</p>
+                            <p><strong>Reward:</strong> Settlements + 3 tiles each</p>
+                        </div>
+                        
+                        <div class="casus-card" data-type="raid" onclick="selectCasus('raid')">
+                            <h4>💰 Raid</h4>
+                            <p><strong>Goal:</strong> Generate 1-15 loot</p>
+                            <p><strong>Victory:</strong> Generate loot through battles within 4 turns</p>
+                            <p><strong>Reward:</strong> Declared loot amount</p>
+                        </div>
+                        
+                        <div class="casus-card" data-type="subjugation" onclick="selectCasus('subjugation')">
+                            <h4>👑 Subjugation</h4>
+                            <p><strong>Goal:</strong> Enforce conditions</p>
+                            <p><strong>Victory:</strong> Capture capital OR hold 50% settlements for 2 turns</p>
+                            <p><strong>Reward:</strong> Conditions + 1 settlement/3 tiles/2 loot</p>
+                        </div>
+                    </div>
+                    
+                    <div class="war-details" id="war-details" style="display: none;">
+                        <div class="war-objective">
+                            <label for="war-target">War Objective:</label>
+                            <input type="text" id="war-target" placeholder="Specify your war goals...">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="army-builder-layout">
+                    <div class="unit-shop">
+                        <h3>Available Units</h3>
+                        <div class="team-selector">
+                            <label>Add units to:</label>
+                            <div class="team-buttons">
+                                <button class="btn-team active" data-team="red" onclick="selectTeam('red')">Red Army</button>
+                                <button class="btn-team" data-team="blue" onclick="selectTeam('blue')">Blue Army</button>
+                            </div>
+                        </div>
+                        <div class="shop-grid">
+                            <div class="shop-unit" data-unit-type="infantry">
+                                <div class="shop-unit-icon">🛡️</div>
+                                <h4>Infantry</h4>
+                                <p>Basic melee unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1</span>
+                                    <span>Defense: 0</span>
+                                    <span>Movement: 1</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('infantry')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="commander">
+                                <div class="shop-unit-icon">👑</div>
+                                <h4>Commander</h4>
+                                <p>Essential leadership unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1</span>
+                                    <span>Defense: 1</span>
+                                    <span>Movement: 1</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('commander')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="shock">
+                                <div class="shop-unit-icon">⚡</div>
+                                <h4>Shock</h4>
+                                <p>Heavy defensive unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1</span>
+                                    <span>Defense: 2</span>
+                                    <span>Movement: 1</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('shock')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="archer">
+                                <div class="shop-unit-icon">🏹</div>
+                                <h4>Archer</h4>
+                                <p>Ranged support unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1 (Range 2)</span>
+                                    <span>Defense: 0</span>
+                                    <span>Movement: 1</span>
+                                    <span>Special: Must be stationary to fire</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('archer')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="cavalry">
+                                <div class="shop-unit-icon">🐎</div>
+                                <h4>Cavalry</h4>
+                                <p>Fast assault unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1</span>
+                                    <span>Defense: 0</span>
+                                    <span>Movement: 3</span>
+                                    <span>Special: Flanking bonus vs Shock</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('cavalry')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="light-chariot">
+                                <div class="shop-unit-icon">🛡️</div>
+                                <h4>Light Chariot</h4>
+                                <p>Mobile armored unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1</span>
+                                    <span>Defense: Immune to front attacks</span>
+                                    <span>Movement: 3</span>
+                                    <span>Special: Vulnerable to side/rear</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('light-chariot')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="heavy-chariot">
+                                <div class="shop-unit-icon">🏛️</div>
+                                <h4>Heavy Chariot</h4>
+                                <p>Ultra-heavy mobile unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: 1</span>
+                                    <span>Defense: Takes 3+ hits to destroy</span>
+                                    <span>Movement: 2</span>
+                                    <span>Special: Requires rider unit</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('heavy-chariot')">Add Unit</button>
+                            </div>
+                            
+                            <div class="shop-unit" data-unit-type="scout">
+                                <div class="shop-unit-icon">👁️</div>
+                                <h4>Scout</h4>
+                                <p>Reconnaissance unit</p>
+                                <div class="unit-stats">
+                                    <span>Attack: Cannot attack</span>
+                                    <span>Defense: Cannot be attacked</span>
+                                    <span>Movement: 5</span>
+                                    <span>Special: Reveals enemy positions</span>
+                                </div>
+                                <button class="btn-add" onclick="addUnit('scout')">Add Unit</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="army-composition">
+                        <div class="army-section">
+                            <h3>Red Army <span id="red-unit-count">(0/12 units)</span></h3>
+                            <div class="commander-note">
+                                <p>⚠️ Each army must have exactly 1 Commander</p>
+                            </div>
+                            <div id="red-army-list" class="army-list">
+                                <!-- Red army units will be populated here -->
+                            </div>
+                            <div class="army-actions">
+                                <button class="btn-secondary" onclick="clearArmy('red')">Clear Army</button>
+                                <button class="btn-secondary" onclick="generateRandomArmy('red')">Random Army</button>
+                            </div>
+                        </div>
+                        
+                        <div class="army-section">
+                            <h3>Blue Army <span id="blue-unit-count">(0/12 units)</span></h3>
+                            <div class="commander-note">
+                                <p>⚠️ Each army must have exactly 1 Commander</p>
+                            </div>
+                            <div id="blue-army-list" class="army-list">
+                                <!-- Blue army units will be populated here -->
+                            </div>
+                            <div class="army-actions">
+                                <button class="btn-secondary" onclick="clearArmy('blue')">Clear Army</button>
+                                <button class="btn-secondary" onclick="generateRandomArmy('blue')">Random Army</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="army-builder-controls">
+                    <div class="army-presets">
+                        <h3>Army Presets</h3>
+                        <button class="btn-preset" onclick="loadPreset('balanced')">Balanced Army</button>
+                        <button class="btn-preset" onclick="loadPreset('cavalry')">Cavalry Rush</button>
+                        <button class="btn-preset" onclick="loadPreset('defensive')">Defensive Wall</button>
+                        <button class="btn-preset" onclick="loadPreset('archer')">Archer Formation</button>
+                    </div>
+                    
+                    <div class="battle-ready">
+                        <div class="ready-status">
+                            <p id="army-status">Configure both armies to start battle</p>
+                        </div>
+                        <button id="start-battle-btn" class="btn-primary" onclick="startBattleWithCustomArmies()" disabled>Start Battle</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Battle Page -->
+        <div id="battle-page" class="page">
+            <div class="container">
+                <div class="battle-header">
+                    <h2>Battle Arena</h2>
+                    <div class="battle-info">
+                        <div class="turn-info">
+                            <span>Turn: <span id="current-turn">1</span></span>
+                            <span>Phase: <span id="current-phase">Placement</span></span>
+                            <span>Player: <span id="current-player">Red</span></span>
+                        </div>
+                        <button id="end-turn-btn" class="btn-secondary" onclick="endTurn()">End Turn</button>
+                    </div>
+                </div>
+
+                <div class="battle-layout">
+                    <div class="army-panel">
+                        <h3>Available Units</h3>
+                        <div id="available-units" class="units-list">
+                            <!-- Units will be populated by JavaScript -->
+                        </div>
+                        
+                        <div class="unit-info">
+                            <h4>Unit Details</h4>
+                            <div id="unit-details">
+                                <p>Select a unit to view details</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="battlefield-container">
+                        <div id="battlefield" class="battlefield">
+                            <!-- 9x9 grid will be generated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="controls-panel">
+                        <h3>Actions</h3>
+                        <div class="action-buttons">
+                            <button class="btn-action" onclick="selectAction('move')">Move</button>
+                            <button class="btn-action" onclick="selectAction('turn')">Turn</button>
+                            <button class="btn-action" onclick="selectAction('attack')">Attack</button>
+                            <button class="btn-action" onclick="selectAction('nothing')">Do Nothing</button>
+                        </div>
+                        
+                        <div class="battle-log">
+                            <h4>Battle Log</h4>
+                            <div id="log-messages" class="log-content">
+                                <p>Battle initialized. Red player starts placement phase.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
