@@ -301,7 +301,7 @@ class Unit {
         this.y = y;
         gameState.battlefield[y][x] = this;
         this.hasMoved = true;
-        
+
         return true;
     }
 
@@ -414,6 +414,21 @@ class Unit {
     resetTurn() {
         this.hasMoved = false;
         this.hasActed = false;
+    }
+
+    turn(direction) {
+        if (['north', 'south', 'east', 'west'].includes(direction)) {
+            this.direction = direction;
+            gameState.addLogMessage(`${this.type} turned to face ${direction}.`, 'info');
+        } else {
+            console.error('Invalid direction:', direction);
+        }
+    }
+
+    doNothing() {
+        this.hasMoved = true;
+        this.hasActed = true;
+        gameState.addLogMessage(`${this.type} chose to do nothing this turn.`, 'info');
     }
 }
 
@@ -915,7 +930,11 @@ function handleBattleClick(x, y, cell) {
 
     // If clicking on valid move location and unit can move
     if (cell.classList.contains('valid-move') && !gameState.selectedUnit.hasMoved) {
-        gameState.selectedUnit.move(x, y);
+        const moveSuccessful = gameState.selectedUnit.move(x, y);
+        if (!moveSuccessful) {
+            alert('Move failed. Please try again.');
+            return;
+        }
     } else if (cell.classList.contains('valid-attack') && target) {
         // Ensure the target is an enemy unit
         if (target.team === gameState.selectedUnit.team) {
@@ -1151,8 +1170,21 @@ function showSettingsMenu() {
 }
 
 function applySettings() {
-    const battlefieldSize = parseInt(document.getElementById('battlefield-size').value, 10);
-    const maxUnits = parseInt(document.getElementById('max-units').value, 10);
+    const battlefieldSizeInput = document.getElementById('battlefield-size');
+    const maxUnitsInput = document.getElementById('max-units');
+
+    if (!battlefieldSizeInput || !maxUnitsInput) {
+        console.error('Settings inputs are missing.');
+        return;
+    }
+
+    const battlefieldSize = parseInt(battlefieldSizeInput.value, 10);
+    const maxUnits = parseInt(maxUnitsInput.value, 10);
+
+    if (isNaN(battlefieldSize) || isNaN(maxUnits) || battlefieldSize < 5 || battlefieldSize > 15 || maxUnits < 4 || maxUnits > 20) {
+        console.error('Invalid settings values.');
+        return;
+    }
 
     gameState.battlefield = Array(battlefieldSize).fill().map(() => Array(battlefieldSize).fill(null));
     gameState.armyLimits.maxUnits = maxUnits;
@@ -1162,7 +1194,10 @@ function applySettings() {
 }
 
 function closeSettingsMenu() {
-    document.querySelector('.settings-menu').remove();
+    const settingsMenu = document.querySelector('.settings-menu');
+    if (settingsMenu) {
+        settingsMenu.remove();
+    }
 }
 
 // Add a button to open the settings menu
@@ -1344,3 +1379,15 @@ Unit.prototype.destroyUnit = function(target) {
         showReplayButton();
     }
 };
+
+function handleTurnAction(unit, direction) {
+    unit.turn(direction);
+    updateUI();
+}
+
+function handleDoNothingAction(unit) {
+    unit.doNothing();
+    updateUI();
+}
+
+module.exports = { ReplayManager, applySettings };
