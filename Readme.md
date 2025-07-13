@@ -121,7 +121,6 @@ Open `index.html` in your browser to start playing immediately!
 - **Cross-browser compatibility** - Works in all modern browsers
 
 ## 📚 Game Mechanics Reference
-## 📚 Game Mechanics Reference
 
 ### Unit Statistics
 Each unit has the following core stats:
