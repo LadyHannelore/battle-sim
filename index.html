@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grand-Tactical Battle System</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <h1>Grand-Tactical Battle System</h1>
+            <nav class="nav-tabs">
+                <button class="tab-btn active" data-tab="game">Battle</button>
+                <button class="tab-btn" data-tab="tutorial">Tutorial</button>
+                <button class="tab-btn" data-tab="setup">Setup</button>
+            </nav>
+        </header>
+
+        <div class="tab-content active" id="game-tab">
+            <div class="game-container">
+                <div class="sidebar left-sidebar">
+                    <div class="game-info">
+                        <h3>Turn <span id="current-turn">1</span></h3>
+                        <div class="phase-indicator">
+                            <span id="current-phase">Initiative Phase</span>
+                        </div>
+                        <div class="player-info">
+                            Active: <span id="active-player">Player 1</span>
+                        </div>
+                        <div class="weather-info">
+                            <span id="weather">Clear</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-panel">
+                        <h4>Actions</h4>
+                        <button id="roll-initiative" class="btn primary">Roll Initiative</button>
+                        <button id="weather-control" class="btn secondary">Check Weather</button>
+                        <button id="command-phase" class="btn primary">Command Phase</button>
+                        <button id="resupply" class="btn secondary">Resupply</button>
+                        <button id="end-turn" class="btn primary">End Turn</button>
+                        
+                        <h4>Game Management</h4>
+                        <button id="save-game" class="btn secondary">Save Game</button>
+                        <button id="load-game" class="btn secondary">Load Game</button>
+                        <button id="new-game" class="btn secondary">New Game</button>
+                    </div>
+
+                    <div class="selected-unit-info" id="unit-info">
+                        <h4>Selected Unit</h4>
+                        <div id="unit-details">Select a unit to view details</div>
+                        <div class="unit-controls">
+                            <label for="formation-select">Formation:</label>
+                            <select id="formation-select" class="form-control">
+                                <option value="line">Line</option>
+                                <option value="column">Column</option>
+                                <option value="square">Square</option>
+                                <option value="wedge">Wedge</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="battle-area">
+                    <div id="board" class="board"></div>
+                    <div class="board-info">
+                        <div class="legend">
+                            <div class="legend-item"><span class="terrain-sample forest"></span> Forest (+2 DEF, 2 MV)</div>
+                            <div class="legend-item"><span class="terrain-sample hill"></span> Hill (+3 DEF, 2 MV)</div>
+                            <div class="legend-item"><span class="terrain-sample marsh"></span> Marsh (3 MV, Cavalry -1 ATK)</div>
+                            <div class="legend-item"><span class="structure-sample">🧱</span> Wall</div>
+                            <div class="legend-item"><span class="structure-sample">🚪</span> Gate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar right-sidebar">
+                    <div class="commanders-panel">
+                        <h4>Commanders</h4>
+                        <div id="commanders-list"></div>
+                    </div>
+                    
+                    <div class="orders-panel">
+                        <h4>Standing Orders</h4>
+                        <div id="orders-list"></div>
+                        <button id="issue-order" class="btn secondary">Issue Order</button>
+                    </div>
+
+                    <div class="victory-conditions">
+                        <h4>Victory Conditions</h4>
+                        <div id="victory-status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tutorial-tab">
+            <div class="tutorial-container">
+                <div class="tutorial-content">
+                    <h2>Grand-Tactical Battle System Tutorial</h2>
+                    
+                    <div class="tutorial-navigation">
+                        <button class="tutorial-nav-btn active" data-section="overview">Overview</button>
+                        <button class="tutorial-nav-btn" data-section="getting-started">Getting Started</button>
+                        <button class="tutorial-nav-btn" data-section="basic-controls">Basic Controls</button>
+                        <button class="tutorial-nav-btn" data-section="combat">Combat</button>
+                        <button class="tutorial-nav-btn" data-section="advanced">Advanced</button>
+                        <button class="tutorial-nav-btn" data-section="strategy">Strategy</button>
+                    </div>
+
+                    <div class="tutorial-section active" id="overview">
+                        <h3>🎯 Game Overview</h3>
+                        <p>Welcome to the Grand-Tactical Battle System! This is a comprehensive hex-based wargame where you command medieval armies in epic battles.</p>
+                        
+                        <div class="tutorial-subsection">
+                            <h4>🎮 What You'll Learn</h4>
+                            <ul>
+                                <li>How to move and command your units</li>
+                                <li>Combat mechanics and tactics</li>
+                                <li>Terrain effects and positioning</li>
+                                <li>Supply and logistics management</li>
+                                <li>Advanced strategies and formations</li>
+                            </ul>
+                        </div>
+
+                        <div class="tutorial-subsection">
+                            <h4>⚔️ Core Concepts</h4>
+                            <div class="concept-grid">
+                                <div class="concept-card">
+                                    <div class="concept-icon">🏰</div>
+                                    <h5>Regiments</h5>
+                                    <p>Units of 200-400 soldiers represented as single pieces on the battlefield</p>
+                                </div>
+                                <div class="concept-card">
+                                    <div class="concept-icon">👑</div>
+                                    <h5>Commanders</h5>
+                                    <p>Leaders who issue orders, boost morale, and provide strategic bonuses</p>
+                                </div>
+                                <div class="concept-card">
+                                    <div class="concept-icon">🌍</div>
+                                    <h5>Terrain</h5>
+                                    <p>Hills, forests, and marshes that affect movement and combat</p>
+                                </div>
+                                <div class="concept-card">
+                                    <div class="concept-icon">📦</div>
+                                    <h5>Supply</h5>
+                                    <p>Units need supplies and ammunition to maintain effectiveness</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section" id="getting-started">
+                        <h3>🚀 Getting Started</h3>
+                        
+                        <div class="step-by-step">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Choose Your Battle</h4>
+                                    <p>Go to the <strong>Setup</strong> tab to select your battle type:</p>
+                                    <ul>
+                                        <li><strong>Open Field:</strong> Tactical battles with objectives to control</li>
+                                        <li><strong>Siege:</strong> Assault or defend fortifications</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Select Board Size</h4>
+                                    <p>Choose the scale of your battle:</p>
+                                    <ul>
+                                        <li><strong>8x8:</strong> Quick demo battles (recommended for learning)</li>
+                                        <li><strong>16x16:</strong> Skirmish-sized engagements</li>
+                                        <li><strong>30x30:</strong> Full-scale epic battles</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Start Your First Battle</h4>
+                                    <p>Click <strong>"Start Battle"</strong> to begin with a pre-configured army, or use <strong>"Random Setup"</strong> for variety.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tutorial-tip">
+                            <h4>💡 Pro Tip</h4>
+                            <p>Start with the 8x8 demo battle to learn the basics before tackling larger engagements!</p>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section" id="basic-controls">
+                        <h3>🎮 Basic Controls</h3>
+                        
+                        <div class="controls-grid">
+                            <div class="control-item">
+                                <div class="control-icon">🖱️</div>
+                                <h4>Unit Selection</h4>
+                                <p>Click on any of your units to select it. The selected unit will be highlighted in green.</p>
+                            </div>
+                            
+                            <div class="control-item">
+                                <div class="control-icon">🟡</div>
+                                <h4>Movement</h4>
+                                <p>Yellow highlighted squares show where your unit can move. Click any yellow square to move there.</p>
+                            </div>
+                            
+                            <div class="control-item">
+                                <div class="control-icon">🔴</div>
+                                <h4>Combat</h4>
+                                <p>Red highlighted squares show enemy units you can attack. Click to engage in combat.</p>
+                            </div>
+                            
+                            <div class="control-item">
+                                <div class="control-icon">ℹ️</div>
+                                <h4>Unit Information</h4>
+                                <p>Selected unit details appear in the left panel. Hover over units to see their stats.</p>
+                            </div>
+                        </div>
+
+                        <div class="tutorial-subsection">
+                            <h4>🎯 Turn Sequence</h4>
+                            <div class="phase-flow">
+                                <div class="phase-step">
+                                    <div class="phase-icon">🎲</div>
+                                    <h5>Initiative</h5>
+                                    <p>Roll for turn order</p>
+                                </div>
+                                <div class="phase-arrow">→</div>
+                                <div class="phase-step">
+                                    <div class="phase-icon">🌤️</div>
+                                    <h5>Weather</h5>
+                                    <p>Check conditions</p>
+                                </div>
+                                <div class="phase-arrow">→</div>
+                                <div class="phase-step">
+                                    <div class="phase-icon">📋</div>
+                                    <h5>Command</h5>
+                                    <p>Issue orders</p>
+                                </div>
+                                <div class="phase-arrow">→</div>
+                                <div class="phase-step">
+                                    <div class="phase-icon">⚔️</div>
+                                    <h5>Activation</h5>
+                                    <p>Move & fight</p>
+                                </div>
+                                <div class="phase-arrow">→</div>
+                                <div class="phase-step">
+                                    <div class="phase-icon">🏁</div>
+                                    <h5>End</h5>
+                                    <p>Recovery & cleanup</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section" id="combat">
+                        <h3>⚔️ Combat System</h3>
+                        
+                        <div class="combat-types">
+                            <div class="combat-type">
+                                <h4>🏹 Ranged Combat</h4>
+                                <div class="combat-details">
+                                    <p><strong>Range:</strong> Units like bowmen can attack from a distance</p>
+                                    <p><strong>Accuracy:</strong> Based on unit skill and terrain</p>
+                                    <p><strong>Ammunition:</strong> Limited shots - resupply needed</p>
+                                </div>
+                            </div>
+                            
+                            <div class="combat-type">
+                                <h4>⚔️ Melee Combat</h4>
+                                <div class="combat-details">
+                                    <p><strong>Close Combat:</strong> Adjacent units can fight</p>
+                                    <p><strong>Simultaneous:</strong> Both units can inflict damage</p>
+                                    <p><strong>Positioning:</strong> Flanking and rear attacks deal bonus damage</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tutorial-subsection">
+                            <h4>🎯 Combat Modifiers</h4>
+                            <div class="modifier-grid">
+                                <div class="modifier-item positive">
+                                    <h5>👍 Positive Modifiers</h5>
+                                    <ul>
+                                        <li>High ground (+3 DEF)</li>
+                                        <li>Forest cover (+2 DEF)</li>
+                                        <li>Flanking attack (+15% damage)</li>
+                                        <li>Rear attack (+30% damage)</li>
+                                        <li>Cavalry charge (+2 ATK)</li>
+                                    </ul>
+                                </div>
+                                <div class="modifier-item negative">
+                                    <h5>👎 Negative Modifiers</h5>
+                                    <ul>
+                                        <li>Uphill attack (-20% accuracy)</li>
+                                        <li>Marsh terrain (cavalry -1 ATK)</li>
+                                        <li>Low morale (-2 ATK/DEF)</li>
+                                        <li>Out of supply (-2 ATK/DEF)</li>
+                                        <li>Fatigue (STA = 0: -2 MV/ATK)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section" id="advanced">
+                        <h3>🧠 Advanced Mechanics</h3>
+                        
+                        <div class="advanced-topics">
+                            <div class="advanced-topic">
+                                <h4>🏰 Siege Warfare</h4>
+                                <div class="siege-info">
+                                    <p>Siege battles involve attacking or defending fortifications:</p>
+                                    <ul>
+                                        <li><strong>Walls:</strong> Block movement, provide defense bonus</li>
+                                        <li><strong>Gates:</strong> Can be opened/closed, vulnerable to rams</li>
+                                        <li><strong>Siege Engines:</strong> Catapults and battering rams</li>
+                                        <li><strong>Objectives:</strong> Capture the keep to win</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="advanced-topic">
+                                <h4>📦 Supply Management</h4>
+                                <div class="supply-info">
+                                    <p>Keep your army supplied for maximum effectiveness:</p>
+                                    <ul>
+                                        <li><strong>Supply Points:</strong> Each unit consumes supply over time</li>
+                                        <li><strong>Resupply:</strong> Commanders can resupply adjacent units</li>
+                                        <li><strong>Penalties:</strong> Unsupplied units fight at reduced effectiveness</li>
+                                        <li><strong>Ammunition:</strong> Ranged units need ammo to shoot</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="advanced-topic">
+                                <h4>🎖️ Experience & Formations</h4>
+                                <div class="experience-info">
+                                    <p>Unit experience and formations affect combat:</p>
+                                    <ul>
+                                        <li><strong>Experience:</strong> Green → Regular → Veteran → Elite → Legendary</li>
+                                        <li><strong>Formations:</strong> Line, Column, Phalanx, Wedge, etc.</li>
+                                        <li><strong>Bonuses:</strong> Higher experience = better stats</li>
+                                        <li><strong>Doctrines:</strong> Special abilities for veteran+ units</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-section" id="strategy">
+                        <h3>🎯 Strategy & Tactics</h3>
+                        
+                        <div class="strategy-tips">
+                            <div class="strategy-tip">
+                                <h4>🏔️ Terrain Tactics</h4>
+                                <ul>
+                                    <li>Hold high ground for defensive bonuses</li>
+                                    <li>Use forests to protect weak units</li>
+                                    <li>Avoid marshes with cavalry</li>
+                                    <li>Control key terrain features</li>
+                                </ul>
+                            </div>
+
+                            <div class="strategy-tip">
+                                <h4>🐎 Unit Combinations</h4>
+                                <ul>
+                                    <li>Protect archers with infantry</li>
+                                    <li>Use cavalry for flanking attacks</li>
+                                    <li>Pikemen counter cavalry charges</li>
+                                    <li>Combined arms tactics work best</li>
+                                </ul>
+                            </div>
+
+                            <div class="strategy-tip">
+                                <h4>👑 Command & Control</h4>
+                                <ul>
+                                    <li>Keep commanders safe but active</li>
+                                    <li>Use command radius effectively</li>
+                                    <li>Rally broken units when possible</li>
+                                    <li>Coordinate your attacks</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="tutorial-subsection">
+                            <h4>🏆 Victory Conditions</h4>
+                            <div class="victory-conditions">
+                                <div class="victory-type">
+                                    <h5>🌾 Open Field Battles</h5>
+                                    <ul>
+                                        <li>Control 60% of objectives at battle end</li>
+                                        <li>Rout 50% of enemy regiments</li>
+                                        <li>Eliminate enemy commanders</li>
+                                    </ul>
+                                </div>
+                                <div class="victory-type">
+                                    <h5>🏰 Siege Battles</h5>
+                                    <ul>
+                                        <li><strong>Attacker:</strong> Breach and occupy the central keep</li>
+                                        <li><strong>Defender:</strong> Hold for 30 turns</li>
+                                        <li>Secondary objectives provide bonus points</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-actions">
+                        <button id="start-interactive-tutorial" class="btn primary large">Start Interactive Tutorial</button>
+                        <button id="practice-battle" class="btn secondary large">Practice Battle</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="setup-tab">
+            <div class="setup-container">
+                <h2>Battle Setup</h2>
+                
+                <div class="setup-section">
+                    <h3>Battle Type</h3>
+                    <div class="battle-type-selector">
+                        <label><input type="radio" name="battle-type" value="open-field" checked> Open Field</label>
+                        <label><input type="radio" name="battle-type" value="siege"> Siege</label>
+                    </div>
+                </div>
+
+                <div class="setup-section">
+                    <h3>Board Size</h3>
+                    <select id="board-size">
+                        <option value="8">8x8 (Demo)</option>
+                        <option value="16">16x16 (Skirmish)</option>
+                        <option value="30">30x30 (Full Battle)</option>
+                    </select>
+                </div>
+
+                <div class="setup-section">
+                    <h3>Army Composition</h3>
+                    <div class="army-builder">
+                        <h4>Player 1 (White)</h4>
+                        <div class="unit-selector" id="player1-units"></div>
+                        
+                        <h4>Player 2 (Black)</h4>
+                        <div class="unit-selector" id="player2-units"></div>
+                    </div>
+                </div>
+
+                <div class="setup-actions">
+                    <button id="start-battle" class="btn primary large">Start Battle</button>
+                    <button id="random-setup" class="btn secondary">Random Setup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
