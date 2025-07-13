@@ -82,12 +82,24 @@ class GameState {
             this.currentPlayer = 'red'; // Red always goes first in battle
         } else if (this.currentPhase === 'battle') {
             this.currentPhase = 'rally';
+            // Rally phase - heal injured units and reset positions
+            [...this.redArmy, ...this.blueArmy].forEach(unit => {
+                if (unit.injured) {
+                    unit.injured = false;
+                    this.addLogMessage(`${unit.type} recovers from injuries`, 'info');
+                }
+            });
         } else if (this.currentPhase === 'rally') {
             this.currentTurn++;
             this.currentPhase = 'battle';
             this.currentPlayer = 'red';
+            // Reset all units for new turn
+            [...this.redArmy, ...this.blueArmy].forEach(unit => {
+                unit.resetTurn();
+            });
         }
         updateUI();
+        populateAvailableUnits();
     }
 }
 
@@ -213,6 +225,11 @@ class Unit {
     }
 
     canMoveTo(x, y) {
+        // During placement phase, units can be placed anywhere valid
+        if (this.x === null && this.y === null) {
+            return true; // Will be checked by placement zone logic
+        }
+        
         if (this.hasMoved) return false;
         
         const dx = Math.abs(x - this.x);
@@ -704,13 +721,30 @@ function populateAvailableUnits() {
     
     currentArmy.forEach(unit => {
         if (gameState.currentPhase === 'placement' && unit.x === null) {
+            // Show units that haven't been placed yet
             const unitElement = createUnitElement(unit);
             unitsContainer.appendChild(unitElement);
-        } else if (gameState.currentPhase === 'battle' && unit.x !== null) {
+        } else if ((gameState.currentPhase === 'battle' || gameState.currentPhase === 'rally') && unit.x !== null) {
+            // Show units that are on the battlefield
             const unitElement = createUnitElement(unit);
             unitsContainer.appendChild(unitElement);
         }
     });
+    
+    // Add phase-specific instructions
+    const instructionElement = document.createElement('div');
+    instructionElement.className = 'phase-instructions';
+    instructionElement.style.cssText = 'padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 5px; margin-top: 1rem; font-size: 0.9rem;';
+    
+    if (gameState.currentPhase === 'placement') {
+        instructionElement.innerHTML = '<strong>Placement Phase:</strong><br>Select units and place them in your deployment zone.';
+    } else if (gameState.currentPhase === 'battle') {
+        instructionElement.innerHTML = '<strong>Battle Phase:</strong><br>Select units to move and attack. Click green squares to move, red squares to attack.';
+    } else if (gameState.currentPhase === 'rally') {
+        instructionElement.innerHTML = '<strong>Rally Phase:</strong><br>Units recover from injuries. Click "End Turn" to continue.';
+    }
+    
+    unitsContainer.appendChild(instructionElement);
 }
 
 function createUnitElement(unit) {
@@ -767,26 +801,34 @@ function highlightValidActions(unit) {
         cell.classList.remove('valid-move', 'valid-attack', 'selected');
     });
     
+    console.log('Highlighting for unit:', unit.type, 'team:', unit.team, 'phase:', gameState.currentPhase);
+    
     if (gameState.currentPhase === 'placement') {
         // Highlight valid placement zones
         const isRed = unit.team === 'red';
+        let highlightedCells = 0;
+        
         document.querySelectorAll('.battlefield-cell').forEach(cell => {
             const x = parseInt(cell.dataset.x);
             const y = parseInt(cell.dataset.y);
             
             if (isRed && y >= 7 && !gameState.battlefield[y][x]) {
                 cell.classList.add('valid-move');
+                highlightedCells++;
             } else if (!isRed && y <= 1 && !gameState.battlefield[y][x]) {
                 cell.classList.add('valid-move');
+                highlightedCells++;
             }
         });
-    } else if (gameState.currentPhase === 'battle' && unit.x !== null) {
+        
+        console.log('Highlighted', highlightedCells, 'placement cells for', unit.team, 'team');
+    } else if ((gameState.currentPhase === 'battle' || gameState.currentPhase === 'rally') && unit.x !== null) {
         // Highlight current position
         const currentCell = document.querySelector(`[data-x="${unit.x}"][data-y="${unit.y}"]`);
         if (currentCell) currentCell.classList.add('selected');
         
-        // Highlight valid moves
-        if (!unit.hasMoved) {
+        // Highlight valid moves (only if unit hasn't moved yet)
+        if (!unit.hasMoved && gameState.currentPhase === 'battle') {
             for (let y = 0; y < 9; y++) {
                 for (let x = 0; x < 9; x++) {
                     if (unit.canMoveTo(x, y) && !gameState.battlefield[y][x]) {
@@ -797,8 +839,8 @@ function highlightValidActions(unit) {
             }
         }
         
-        // Highlight valid attacks
-        if (!unit.hasActed) {
+        // Highlight valid attacks (only if unit hasn't acted yet)
+        if (!unit.hasActed && gameState.currentPhase === 'battle') {
             for (let y = 0; y < 9; y++) {
                 for (let x = 0; x < 9; x++) {
                     const target = gameState.battlefield[y][x];
@@ -825,9 +867,13 @@ function handleCellClick(x, y) {
 function handlePlacementClick(x, y, cell) {
     if (!gameState.selectedUnit) return;
     
+    console.log('Placement click:', x, y, 'Has valid-move class:', cell.classList.contains('valid-move'));
+    
     if (cell.classList.contains('valid-move')) {
         // Place unit
-        gameState.selectedUnit.move(x, y);
+        const success = gameState.selectedUnit.move(x, y);
+        console.log('Move success:', success, 'Unit position:', gameState.selectedUnit.x, gameState.selectedUnit.y);
+        
         updateBattlefield();
         gameState.addLogMessage(`${gameState.selectedUnit.type} placed at (${x}, ${y})`, 'info');
         
@@ -844,7 +890,10 @@ function handlePlacementClick(x, y, cell) {
 function handleBattleClick(x, y, cell) {
     if (!gameState.selectedUnit) return;
     
-    if (cell.classList.contains('valid-move') && gameState.selectedAction === 'move') {
+    const target = gameState.battlefield[y][x];
+    
+    // If clicking on valid move location and unit can move
+    if (cell.classList.contains('valid-move') && !gameState.selectedUnit.hasMoved) {
         // Move unit
         const oldX = gameState.selectedUnit.x;
         const oldY = gameState.selectedUnit.y;
@@ -852,15 +901,23 @@ function handleBattleClick(x, y, cell) {
         if (gameState.selectedUnit.move(x, y)) {
             updateBattlefield();
             gameState.addLogMessage(`${gameState.selectedUnit.type} moved from (${oldX}, ${oldY}) to (${x}, ${y})`, 'info');
-            clearSelection();
+            
+            // Update highlights after move
+            highlightValidActions(gameState.selectedUnit);
         }
-    } else if (cell.classList.contains('valid-attack') && gameState.selectedAction === 'attack') {
-        // Attack target
-        const target = gameState.battlefield[y][x];
+    } 
+    // If clicking on valid attack target and unit can attack
+    else if (cell.classList.contains('valid-attack') && !gameState.selectedUnit.hasActed) {
         if (target && gameState.selectedUnit.attack(target)) {
             updateBattlefield();
-            clearSelection();
+            
+            // Update highlights after attack
+            highlightValidActions(gameState.selectedUnit);
         }
+    }
+    // If clicking on own unit, select it
+    else if (target && target.team === gameState.currentPlayer) {
+        selectUnit(target);
     }
 }
 
@@ -913,12 +970,16 @@ function endTurn() {
         currentArmy.forEach(unit => unit.resetTurn());
         
         if (gameState.currentPlayer === 'blue') {
-            // Both players completed turn, advance to next turn
-            gameState.currentTurn++;
+            // Both players completed turn, go to rally phase
             gameState.nextPhase();
+            gameState.addLogMessage('Turn complete. Rally phase begins!', 'info');
         } else {
             gameState.switchPlayer();
         }
+    } else if (gameState.currentPhase === 'rally') {
+        // Rally phase - advance to next turn
+        gameState.nextPhase();
+        gameState.addLogMessage(`Turn ${gameState.currentTurn} begins!`, 'info');
     }
     
     clearSelection();
@@ -939,18 +1000,29 @@ function updateBattlefield() {
             const unit = gameState.battlefield[y][x];
             if (unit) {
                 const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-                const unitElement = document.createElement('div');
-                unitElement.className = `unit ${unit.team}`;
-                if (unit.injured) unitElement.classList.add('injured');
-                unitElement.innerHTML = unit.getIcon();
-                
-                // Add direction indicator
-                const directionElement = document.createElement('div');
-                directionElement.className = 'unit-direction';
-                directionElement.innerHTML = getDirectionSymbol(unit.direction);
-                unitElement.appendChild(directionElement);
-                
-                cell.appendChild(unitElement);
+                if (cell) {
+                    const unitElement = document.createElement('div');
+                    unitElement.className = `unit ${unit.team}`;
+                    if (unit.injured) unitElement.classList.add('injured');
+                    unitElement.innerHTML = unit.getIcon();
+                    
+                    // Add direction indicator
+                    const directionElement = document.createElement('div');
+                    directionElement.className = 'unit-direction';
+                    directionElement.innerHTML = getDirectionSymbol(unit.direction);
+                    unitElement.appendChild(directionElement);
+                    
+                    cell.appendChild(unitElement);
+                    
+                    // Add visual feedback - change cell background
+                    cell.style.backgroundColor = unit.team === 'red' ? 'rgba(220, 20, 60, 0.3)' : 'rgba(65, 105, 225, 0.3)';
+                }
+            } else {
+                // Clear background color for empty cells
+                const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+                if (cell) {
+                    cell.style.backgroundColor = '';
+                }
             }
         }
     }
@@ -975,8 +1047,16 @@ function updateUI() {
     const endTurnBtn = document.getElementById('end-turn-btn');
     if (gameState.currentPhase === 'placement') {
         endTurnBtn.textContent = gameState.placementPhaseComplete[gameState.currentPlayer] ? 'Next Player' : 'Complete Placement';
-    } else {
-        endTurnBtn.textContent = 'End Turn';
+    } else if (gameState.currentPhase === 'battle') {
+        endTurnBtn.textContent = `End ${gameState.currentPlayer} Turn`;
+    } else if (gameState.currentPhase === 'rally') {
+        endTurnBtn.textContent = 'Continue to Next Turn';
+    }
+    
+    // Show action buttons only during battle phase
+    const actionButtons = document.querySelector('.action-buttons');
+    if (actionButtons) {
+        actionButtons.style.display = gameState.currentPhase === 'battle' ? 'block' : 'none';
     }
 }
 
