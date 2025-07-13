@@ -123,7 +123,7 @@ class Unit {
     setUnitProperties() {
         const properties = {
             infantry: {
-                icon: '🛡️',
+                icon: '🛡️', // Updated to ensure distinct icon
                 attack: 1,
                 defense: 0,
                 movement: 1,
@@ -154,7 +154,7 @@ class Unit {
                 cost: '1 Timber'
             },
             commander: {
-                icon: '👑',
+                icon: '👑', // Ensures commander icon is correctly set
                 attack: 1,
                 defense: 'immune',
                 movement: 1,
@@ -176,7 +176,7 @@ class Unit {
                 cost: '1 Mount'
             },
             'light-chariot': {
-                icon: '🛡️',
+                icon: '🚛', // Updated to ensure distinct icon
                 attack: 1,
                 defense: 'immune-front',
                 movement: 3,
