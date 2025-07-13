@@ -225,36 +225,51 @@ class Unit {
     }
 
     canMoveTo(x, y) {
+        // Ensure the target position is within the battlefield grid
+        if (x < 0 || x >= gameState.battlefield[0].length || y < 0 || y >= gameState.battlefield.length) {
+            return false;
+        }
+
+        // Prevent moving to an occupied cell
+        if (gameState.battlefield[y][x] !== null) {
+            return false;
+        }
+
         // During placement phase, units can be placed anywhere valid
         if (this.x === null && this.y === null) {
             return true; // Will be checked by placement zone logic
         }
-        
+
         if (this.hasMoved) return false;
-        
+
         const dx = Math.abs(x - this.x);
         const dy = Math.abs(y - this.y);
-        
+
         if (this.cardinalOnly) {
             return (dx === 0 || dy === 0) && (dx + dy <= this.movement);
         }
-        
+
         return Math.max(dx, dy) <= this.movement;
     }
 
     canAttack(targetX, targetY) {
+        // Ensure the target position is within the battlefield grid
+        if (targetX < 0 || targetX >= gameState.battlefield[0].length || targetY < 0 || targetY >= gameState.battlefield.length) {
+            return false;
+        }
+
         if (this.hasActed || this.cannotAttack) return false;
-        
+
         // Archers must be stationary to fire
         if (this.type === 'archer' && this.hasMoved) return false;
-        
+
         const dx = Math.abs(targetX - this.x);
         const dy = Math.abs(targetY - this.y);
-        
+
         if (this.type === 'archer') {
             return dx + dy <= this.attackRange && (dx + dy > 0);
         }
-        
+
         // For non-archers, check if target is in front based on direction
         if (this.attackRange === 1) {
             switch (this.direction) {
@@ -264,7 +279,12 @@ class Unit {
                 case 'west': return targetX === this.x - 1 && targetY === this.y;
             }
         }
-        
+
+        // Diagonal attacks for units that can attack diagonally
+        if (this.canAttackDiagonal) {
+            return dx === dy && dx <= this.attackRange;
+        }
+
         return false;
     }
 
@@ -287,60 +307,61 @@ class Unit {
 
     attack(target) {
         if (!target || target.team === this.team || target.cannotBeAttacked) return false;
-        
-        let damage = this.attack;
-        let targetDestroyed = false;
-        
-        // Check for cavalry flanking bonus against shock
-        if (this.type === 'cavalry' && target.type === 'shock') {
-            const attackDirection = this.getAttackDirection(target);
-            if (attackDirection === 'side' || attackDirection === 'rear') {
-                damage += 1; // Flanking bonus
-                gameState.addLogMessage(`${this.type} flanks ${target.type}!`, 'success');
-            }
-        }
-        
-        // Check for vulnerability to side/rear attacks (light chariots)
-        if (target.vulnerableToSideRear) {
-            const attackDirection = this.getAttackDirection(target);
-            if (attackDirection === 'side' || attackDirection === 'rear') {
-                targetDestroyed = true;
-                gameState.addLogMessage(`${target.type} vulnerable to ${attackDirection} attack!`, 'success');
-            }
-        }
-        
-        // Check immunities
-        if (target.defense === 'immune' || target.immuneToSingle) {
-            if (target.immuneToSingle && target.immuneToSingle.includes(this.type)) {
-                if (!target.previousAttacker || target.previousAttacker !== this.type) {
-                    target.previousAttacker = this.type;
-                    gameState.addLogMessage(`${target.type} is immune to single ${this.type} attack`, 'info');
-                    return false;
+
+        confirmAction(`Are you sure you want to attack ${target.type}?`, () => {
+            let damage = this.attack;
+            let targetDestroyed = false;
+            
+            // Check for cavalry flanking bonus against shock
+            if (this.type === 'cavalry' && target.type === 'shock') {
+                const attackDirection = this.getAttackDirection(target);
+                if (attackDirection === 'side' || attackDirection === 'rear') {
+                    damage += 1; // Flanking bonus
+                    gameState.addLogMessage(`${this.type} flanks ${target.type}!`, 'success');
                 }
             }
-        }
-        
-        // Handle heavy chariot damage
-        if (target.type === 'heavy-chariot') {
-            target.currentHitPoints -= damage;
-            if (target.currentHitPoints <= 0) {
-                targetDestroyed = true;
-            } else {
-                gameState.addLogMessage(`${target.type} takes damage (${target.currentHitPoints}/${target.hitPoints} HP remaining)`, 'info');
+            
+            // Check for vulnerability to side/rear attacks (light chariots)
+            if (target.vulnerableToSideRear) {
+                const attackDirection = this.getAttackDirection(target);
+                if (attackDirection === 'side' || attackDirection === 'rear') {
+                    targetDestroyed = true;
+                    gameState.addLogMessage(`${target.type} vulnerable to ${attackDirection} attack!`, 'success');
+                }
             }
-        } else if (targetDestroyed || damage > 0) {
-            targetDestroyed = true;
-        }
-        
-        if (targetDestroyed) {
-            this.destroyUnit(target);
-            gameState.addLogMessage(`${this.type} destroys ${target.type}`, 'success');
-        } else {
-            gameState.addLogMessage(`${this.type} attacks ${target.type} but cannot penetrate defense`, 'info');
-        }
-        
-        this.hasActed = true;
-        return true;
+            
+            // Check immunities
+            if (target.defense === 'immune' || target.immuneToSingle) {
+                if (target.immuneToSingle && target.immuneToSingle.includes(this.type)) {
+                    if (!target.previousAttacker || target.previousAttacker !== this.type) {
+                        target.previousAttacker = this.type;
+                        gameState.addLogMessage(`${target.type} is immune to single ${this.type} attack`, 'info');
+                        return false;
+                    }
+                }
+            }
+            
+            // Handle heavy chariot damage
+            if (target.type === 'heavy-chariot') {
+                target.currentHitPoints -= damage;
+                if (target.currentHitPoints <= 0) {
+                    targetDestroyed = true;
+                } else {
+                    gameState.addLogMessage(`${target.type} takes damage (${target.currentHitPoints}/${target.hitPoints} HP remaining)`, 'info');
+                }
+            } else if (targetDestroyed || damage > 0) {
+                targetDestroyed = true;
+            }
+            
+            if (targetDestroyed) {
+                this.destroyUnit(target);
+                gameState.addLogMessage(`${this.type} destroys ${target.type}`, 'success');
+            } else {
+                gameState.addLogMessage(`${this.type} attacks ${target.type} but cannot penetrate defense`, 'info');
+            }
+            
+            this.hasActed = true;
+        });
     }
 
     getAttackDirection(target) {
@@ -386,7 +407,7 @@ class Unit {
         // Check win condition
         if (target.type === 'commander') {
             gameState.addLogMessage(`${target.team} commander destroyed! ${this.team} wins!`, 'success');
-            endBattle(this.team);
+            showVictoryScreen(this.team);
         }
     }
 
@@ -711,6 +732,26 @@ function createBattlefield() {
             battlefield.appendChild(cell);
         }
     }
+
+    addHoverEffects();
+}
+
+function addHoverEffects() {
+    const cells = document.querySelectorAll('.battlefield-cell');
+    cells.forEach(cell => {
+        cell.addEventListener('mouseenter', () => {
+            const x = parseInt(cell.dataset.x, 10);
+            const y = parseInt(cell.dataset.y, 10);
+            if (gameState.selectedUnit && gameState.selectedUnit.canMoveTo(x, y)) {
+                cell.classList.add('highlight-move');
+            } else if (gameState.selectedUnit && gameState.selectedUnit.canAttack(x, y)) {
+                cell.classList.add('highlight-attack');
+            }
+        });
+        cell.addEventListener('mouseleave', () => {
+            cell.classList.remove('highlight-move', 'highlight-attack');
+        });
+    });
 }
 
 function populateAvailableUnits() {
@@ -800,54 +841,38 @@ function highlightValidActions(unit) {
     document.querySelectorAll('.battlefield-cell').forEach(cell => {
         cell.classList.remove('valid-move', 'valid-attack', 'selected');
     });
-    
-    console.log('Highlighting for unit:', unit.type, 'team:', unit.team, 'phase:', gameState.currentPhase);
-    
+
     if (gameState.currentPhase === 'placement') {
         // Highlight valid placement zones
         const isRed = unit.team === 'red';
-        let highlightedCells = 0;
-        
         document.querySelectorAll('.battlefield-cell').forEach(cell => {
             const x = parseInt(cell.dataset.x);
             const y = parseInt(cell.dataset.y);
-            
-            if (isRed && y >= 7 && !gameState.battlefield[y][x]) {
+            if ((isRed && y >= 7 || !isRed && y <= 1) && !gameState.battlefield[y][x]) {
                 cell.classList.add('valid-move');
-                highlightedCells++;
-            } else if (!isRed && y <= 1 && !gameState.battlefield[y][x]) {
-                cell.classList.add('valid-move');
-                highlightedCells++;
             }
         });
-        
-        console.log('Highlighted', highlightedCells, 'placement cells for', unit.team, 'team');
-    } else if ((gameState.currentPhase === 'battle' || gameState.currentPhase === 'rally') && unit.x !== null) {
-        // Highlight current position
-        const currentCell = document.querySelector(`[data-x="${unit.x}"][data-y="${unit.y}"]`);
-        if (currentCell) currentCell.classList.add('selected');
-        
-        // Highlight valid moves (only if unit hasn't moved yet)
-        if (!unit.hasMoved && gameState.currentPhase === 'battle') {
-            for (let y = 0; y < 9; y++) {
-                for (let x = 0; x < 9; x++) {
-                    if (unit.canMoveTo(x, y) && !gameState.battlefield[y][x]) {
-                        const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-                        if (cell) cell.classList.add('valid-move');
-                    }
+    } else if (gameState.currentPhase === 'battle' && unit.x !== null) {
+        // Highlight valid moves
+        for (let dx = -unit.movement; dx <= unit.movement; dx++) {
+            for (let dy = -unit.movement; dy <= unit.movement; dy++) {
+                const x = unit.x + dx;
+                const y = unit.y + dy;
+                if (unit.canMoveTo(x, y)) {
+                    const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+                    if (cell) cell.classList.add('valid-move');
                 }
             }
         }
-        
-        // Highlight valid attacks (only if unit hasn't acted yet)
-        if (!unit.hasActed && gameState.currentPhase === 'battle') {
-            for (let y = 0; y < 9; y++) {
-                for (let x = 0; x < 9; x++) {
-                    const target = gameState.battlefield[y][x];
-                    if (target && target.team !== unit.team && unit.canAttack(x, y)) {
-                        const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-                        if (cell) cell.classList.add('valid-attack');
-                    }
+
+        // Highlight valid attacks
+        for (let dx = -unit.attackRange; dx <= unit.attackRange; dx++) {
+            for (let dy = -unit.attackRange; dy <= unit.attackRange; dy++) {
+                const x = unit.x + dx;
+                const y = unit.y + dy;
+                if (unit.canAttack(x, y)) {
+                    const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+                    if (cell) cell.classList.add('valid-attack');
                 }
             }
         }
@@ -856,286 +881,466 @@ function highlightValidActions(unit) {
 
 function handleCellClick(x, y) {
     const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-    
+    if (!cell) return;
+
     if (gameState.currentPhase === 'placement') {
-        handlePlacementClick(x, y, cell);
+        this.handlePlacementClick(x, y, cell);
     } else if (gameState.currentPhase === 'battle') {
-        handleBattleClick(x, y, cell);
+        this.handleBattleClick(x, y, cell);
     }
 }
 
 function handlePlacementClick(x, y, cell) {
     if (!gameState.selectedUnit) return;
-    
-    console.log('Placement click:', x, y, 'Has valid-move class:', cell.classList.contains('valid-move'));
-    
-    if (cell.classList.contains('valid-move')) {
-        // Place unit
-        const success = gameState.selectedUnit.move(x, y);
-        console.log('Move success:', success, 'Unit position:', gameState.selectedUnit.x, gameState.selectedUnit.y);
-        
-        updateBattlefield();
-        gameState.addLogMessage(`${gameState.selectedUnit.type} placed at (${x}, ${y})`, 'info');
-        
-        // Check if placement is complete
-        checkPlacementComplete();
-        
-        // Clear selection
-        gameState.selectedUnit = null;
-        populateAvailableUnits();
-        clearHighlights();
+
+    // Ensure the cell is valid for placement
+    if (!cell.classList.contains('valid-move')) return;
+
+    // Prevent placing on an occupied cell
+    if (gameState.battlefield[y][x] !== null) {
+        alert('Cannot place unit on an occupied cell.');
+        return;
     }
+
+    gameState.selectedUnit.move(x, y);
+    gameState.selectedUnit = null;
+    populateAvailableUnits();
+    checkPlacementComplete();
 }
 
 function handleBattleClick(x, y, cell) {
     if (!gameState.selectedUnit) return;
-    
+
     const target = gameState.battlefield[y][x];
-    
+
     // If clicking on valid move location and unit can move
     if (cell.classList.contains('valid-move') && !gameState.selectedUnit.hasMoved) {
-        // Move unit
-        const oldX = gameState.selectedUnit.x;
-        const oldY = gameState.selectedUnit.y;
-        
-        if (gameState.selectedUnit.move(x, y)) {
-            updateBattlefield();
-            gameState.addLogMessage(`${gameState.selectedUnit.type} moved from (${oldX}, ${oldY}) to (${x}, ${y})`, 'info');
-            
-            // Update highlights after move
-            highlightValidActions(gameState.selectedUnit);
+        gameState.selectedUnit.move(x, y);
+    } else if (cell.classList.contains('valid-attack') && target) {
+        // Ensure the target is an enemy unit
+        if (target.team === gameState.selectedUnit.team) {
+            alert('Cannot attack your own unit.');
+            return;
         }
-    } 
-    // If clicking on valid attack target and unit can attack
-    else if (cell.classList.contains('valid-attack') && !gameState.selectedUnit.hasActed) {
-        if (target && gameState.selectedUnit.attack(target)) {
-            updateBattlefield();
-            
-            // Update highlights after attack
-            highlightValidActions(gameState.selectedUnit);
-        }
+
+        gameState.selectedUnit.attack(target);
     }
-    // If clicking on own unit, select it
-    else if (target && target.team === gameState.currentPlayer) {
-        selectUnit(target);
-    }
+
+    highlightValidActions(gameState.selectedUnit);
 }
 
 function checkPlacementComplete() {
-    const currentArmy = gameState.currentPlayer === 'red' ? gameState.redArmy : gameState.blueArmy;
-    const unplacedUnits = currentArmy.filter(unit => unit.x === null);
-    
-    if (unplacedUnits.length === 0) {
-        gameState.placementPhaseComplete[gameState.currentPlayer] = true;
-        gameState.addLogMessage(`${gameState.currentPlayer} placement complete`, 'success');
-        
-        if (gameState.placementPhaseComplete.red && gameState.placementPhaseComplete.blue) {
-            // Both players done, start battle phase
-            gameState.nextPhase();
-            gameState.addLogMessage('Placement complete. Battle phase begins!', 'success');
-        } else {
-            // Switch to other player
-            gameState.switchPlayer();
-        }
-        
-        populateAvailableUnits();
+    const redComplete = gameState.redArmy.every(unit => unit.x !== null);
+    const blueComplete = gameState.blueArmy.every(unit => unit.x !== null);
+
+    if (redComplete && blueComplete) {
+        gameState.nextPhase();
     }
 }
 
-function selectAction(action) {
-    gameState.selectedAction = action;
-    
-    // Update action buttons
-    document.querySelectorAll('.btn-action').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Update highlights
-    if (gameState.selectedUnit) {
-        highlightValidActions(gameState.selectedUnit);
+function animateUnitMovement(unit, targetX, targetY) {
+    const unitElement = document.querySelector(`[data-unit-id="${unit.id}"]`);
+    if (unitElement) {
+        unitElement.style.transition = 'transform 0.5s ease';
+        unitElement.style.transform = `translate(${targetX * 50}px, ${targetY * 50}px)`;
     }
 }
+
+function animateAttack(unit, target) {
+    const unitElement = document.querySelector(`[data-unit-id="${unit.id}"]`);
+    const targetElement = document.querySelector(`[data-unit-id="${target.id}"]`);
+    if (unitElement && targetElement) {
+        unitElement.classList.add('attack-animation');
+        setTimeout(() => {
+            unitElement.classList.remove('attack-animation');
+        }, 500);
+    }
+}
+
+// Update move and attack methods to include animations
+Unit.prototype.move = function(x, y) {
+    if (!this.canMoveTo(x, y)) return false;
+    actionHistory.addAction({ type: 'move', unit: this, from: { x: this.x, y: this.y }, to: { x, y } });
+    // Remove from old position
+    if (this.x !== null && this.y !== null) {
+        gameState.battlefield[this.y][this.x] = null;
+    }
+    
+    // Move to new position
+    this.x = x;
+    this.y = y;
+    gameState.battlefield[y][x] = this;
+    this.hasMoved = true;
+    
+    return true;
+};
+
+Unit.prototype.attack = function(target) {
+    if (!target || target.team === this.team || target.cannotBeAttacked) return false;
+    actionHistory.addAction({ type: 'attack', attacker: this, target });
+    let damage = this.attack;
+    let targetDestroyed = false;
+    
+    // Check for cavalry flanking bonus against shock
+    if (this.type === 'cavalry' && target.type === 'shock') {
+        const attackDirection = this.getAttackDirection(target);
+        if (attackDirection === 'side' || attackDirection === 'rear') {
+            damage += 1; // Flanking bonus
+            gameState.addLogMessage(`${this.type} flanks ${target.type}!`, 'success');
+        }
+    }
+    
+    // Check for vulnerability to side/rear attacks (light chariots)
+    if (target.vulnerableToSideRear) {
+        const attackDirection = this.getAttackDirection(target);
+        if (attackDirection === 'side' || attackDirection === 'rear') {
+            targetDestroyed = true;
+            gameState.addLogMessage(`${target.type} vulnerable to ${attackDirection} attack!`, 'success');
+        }
+    }
+    
+    // Check immunities
+    if (target.defense === 'immune' || target.immuneToSingle) {
+        if (target.immuneToSingle && target.immuneToSingle.includes(this.type)) {
+            if (!target.previousAttacker || target.previousAttacker !== this.type) {
+                target.previousAttacker = this.type;
+                gameState.addLogMessage(`${target.type} is immune to single ${this.type} attack`, 'info');
+                return false;
+            }
+        }
+    }
+    
+    // Handle heavy chariot damage
+    if (target.type === 'heavy-chariot') {
+        target.currentHitPoints -= damage;
+        if (target.currentHitPoints <= 0) {
+            targetDestroyed = true;
+        } else {
+            gameState.addLogMessage(`${target.type} takes damage (${target.currentHitPoints}/${target.hitPoints} HP remaining)`, 'info');
+        }
+    } else if (targetDestroyed || damage > 0) {
+        targetDestroyed = true;
+    }
+    
+    if (targetDestroyed) {
+        this.destroyUnit(target);
+        gameState.addLogMessage(`${this.type} destroys ${target.type}`, 'success');
+    } else {
+        gameState.addLogMessage(`${this.type} attacks ${target.type} but cannot penetrate defense`, 'info');
+    }
+};
+
+function confirmAction(message, onConfirm) {
+    const confirmation = window.confirm(message);
+    if (confirmation) {
+        onConfirm();
+    }
+}
+
+// Update attack and end turn methods to include confirmation dialogs
+Unit.prototype.attack = function(target) {
+    if (!target || target.team === this.team || target.cannotBeAttacked) return false;
+
+    confirmAction(`Are you sure you want to attack ${target.type}?`, () => {
+        let damage = this.attack;
+        let targetDestroyed = false;
+        
+        // Check for cavalry flanking bonus against shock
+        if (this.type === 'cavalry' && target.type === 'shock') {
+            const attackDirection = this.getAttackDirection(target);
+            if (attackDirection === 'side' || attackDirection === 'rear') {
+                damage += 1; // Flanking bonus
+                gameState.addLogMessage(`${this.type} flanks ${target.type}!`, 'success');
+            }
+        }
+        
+        // Check for vulnerability to side/rear attacks (light chariots)
+        if (target.vulnerableToSideRear) {
+            const attackDirection = this.getAttackDirection(target);
+            if (attackDirection === 'side' || attackDirection === 'rear') {
+                targetDestroyed = true;
+                gameState.addLogMessage(`${target.type} vulnerable to ${attackDirection} attack!`, 'success');
+            }
+        }
+        
+        // Check immunities
+        if (target.defense === 'immune' || target.immuneToSingle) {
+            if (target.immuneToSingle && target.immuneToSingle.includes(this.type)) {
+                if (!target.previousAttacker || target.previousAttacker !== this.type) {
+                    target.previousAttacker = this.type;
+                    gameState.addLogMessage(`${target.type} is immune to single ${this.type} attack`, 'info');
+                    return false;
+                }
+            }
+        }
+        
+        // Handle heavy chariot damage
+        if (target.type === 'heavy-chariot') {
+            target.currentHitPoints -= damage;
+            if (target.currentHitPoints <= 0) {
+                targetDestroyed = true;
+            } else {
+                gameState.addLogMessage(`${target.type} takes damage (${target.currentHitPoints}/${target.hitPoints} HP remaining)`, 'info');
+            }
+        } else if (targetDestroyed || damage > 0) {
+            targetDestroyed = true;
+        }
+        
+        if (targetDestroyed) {
+            this.destroyUnit(target);
+            gameState.addLogMessage(`${this.type} destroys ${target.type}`, 'success');
+        } else {
+            gameState.addLogMessage(`${this.type} attacks ${target.type} but cannot penetrate defense`, 'info');
+        }
+        
+        this.hasActed = true;
+    });
+};
 
 function endTurn() {
-    if (gameState.currentPhase === 'placement') {
-        if (!gameState.placementPhaseComplete[gameState.currentPlayer]) {
-            alert('Complete unit placement before ending turn');
-            return;
-        }
+    confirmAction('Are you sure you want to end your turn?', () => {
         gameState.switchPlayer();
-    } else if (gameState.currentPhase === 'battle') {
-        // Reset all units for current player
-        const currentArmy = gameState.currentPlayer === 'red' ? gameState.redArmy : gameState.blueArmy;
-        currentArmy.forEach(unit => unit.resetTurn());
-        
-        if (gameState.currentPlayer === 'blue') {
-            // Both players completed turn, go to rally phase
-            gameState.nextPhase();
-            gameState.addLogMessage('Turn complete. Rally phase begins!', 'info');
-        } else {
-            gameState.switchPlayer();
-        }
-    } else if (gameState.currentPhase === 'rally') {
-        // Rally phase - advance to next turn
         gameState.nextPhase();
-        gameState.addLogMessage(`Turn ${gameState.currentTurn} begins!`, 'info');
+    });
+}
+
+function undoLastAction() {
+    const action = actionHistory.undo();
+    if (!action) return;
+
+    if (action.type === 'move') {
+        action.unit.move(action.from.x, action.from.y);
+    } else if (action.type === 'attack') {
+        // Handle undoing an attack (e.g., restoring target state)
     }
-    
-    clearSelection();
-    populateAvailableUnits();
+
     updateUI();
 }
 
-function updateBattlefield() {
-    // Clear all unit displays
-    document.querySelectorAll('.battlefield-cell').forEach(cell => {
-        const unit = cell.querySelector('.unit');
-        if (unit) unit.remove();
-    });
+function redoLastAction() {
+    const action = actionHistory.redo();
+    if (!action) return;
+
+    if (action.type === 'move') {
+        action.unit.move(action.to.x, action.to.y);
+    } else if (action.type === 'attack') {
+        // Handle redoing an attack
+    }
+
+    updateUI();
+}
+
+// Settings Menu Functions
+function showSettingsMenu() {
+    const settingsMenu = document.createElement('div');
+    settingsMenu.className = 'settings-menu';
+    settingsMenu.innerHTML = `
+        <h2>Game Settings</h2>
+        <label>
+            Battlefield Size:
+            <input type="number" id="battlefield-size" value="9" min="5" max="15">
+        </label>
+        <label>
+            Max Units per Army:
+            <input type="number" id="max-units" value="12" min="4" max="20">
+        </label>
+        <button onclick="applySettings()">Apply</button>
+        <button onclick="closeSettingsMenu()">Close</button>
+    `;
+    document.body.appendChild(settingsMenu);
+}
+
+function applySettings() {
+    const battlefieldSize = parseInt(document.getElementById('battlefield-size').value, 10);
+    const maxUnits = parseInt(document.getElementById('max-units').value, 10);
+
+    gameState.battlefield = Array(battlefieldSize).fill().map(() => Array(battlefieldSize).fill(null));
+    gameState.armyLimits.maxUnits = maxUnits;
+
+    closeSettingsMenu();
+    initializeBattle();
+}
+
+function closeSettingsMenu() {
+    document.querySelector('.settings-menu').remove();
+}
+
+// Add a button to open the settings menu
+const settingsButton = document.createElement('button');
+settingsButton.textContent = 'Settings';
+settingsButton.onclick = showSettingsMenu;
+document.body.appendChild(settingsButton);
+
+// Tutorial Functions
+function startTutorial() {
+    const tutorialSteps = [
+        'Welcome to the game! Let me guide you through the basics.',
+        'Step 1: Select a unit by clicking on it.',
+        'Step 2: Move your unit by clicking on a highlighted cell.',
+        'Step 3: Attack an enemy unit by clicking on a red-highlighted cell.',
+        'Step 4: End your turn by clicking the "End Turn" button.',
+        'That’s it! You’re ready to play. Good luck!'
+    ];
+
+    let currentStep = 0;
+
+    function showNextStep() {
+        if (currentStep >= tutorialSteps.length) {
+            document.querySelector('.tutorial-overlay').remove();
+            return;
+        }
+
+        const overlay = document.querySelector('.tutorial-overlay') || document.createElement('div');
+        overlay.className = 'tutorial-overlay';
+        overlay.innerHTML = `
+            <div class="tutorial-step">
+                <p>${tutorialSteps[currentStep]}</p>
+                <button onclick="showNextStep()">Next</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        currentStep++;
+    }
+
+    showNextStep();
+}
+
+// Add a button to start the tutorial
+const tutorialButton = document.createElement('button');
+tutorialButton.textContent = 'Tutorial';
+tutorialButton.onclick = startTutorial;
+document.body.appendChild(tutorialButton);
+
+class ReplayManager {
+    constructor() {
+        this.actions = [];
+    }
+
+    recordAction(action) {
+        this.actions.push(action);
+    }
+
+    playReplay() {
+        let index = 0;
+        const interval = setInterval(() => {
+            if (index >= this.actions.length) {
+                clearInterval(interval);
+                return;
+            }
+
+            const action = this.actions[index];
+            if (action.type === 'move') {
+                action.unit.move(action.to.x, action.to.y);
+            } else if (action.type === 'attack') {
+                action.attacker.attack(action.target);
+            }
+
+            index++;
+        }, 1000);
+    }
+}
+
+const replayManager = new ReplayManager();
+
+// Update move and attack methods to record actions for replay
+Unit.prototype.move = function(x, y) {
+    if (!this.canMoveTo(x, y)) return false;
+    replayManager.recordAction({ type: 'move', unit: this, to: { x, y } });
+    // Remove from old position
+    if (this.x !== null && this.y !== null) {
+        gameState.battlefield[this.y][this.x] = null;
+    }
     
-    // Place all units
-    for (let y = 0; y < 9; y++) {
-        for (let x = 0; x < 9; x++) {
-            const unit = gameState.battlefield[y][x];
-            if (unit) {
-                const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-                if (cell) {
-                    const unitElement = document.createElement('div');
-                    unitElement.className = `unit ${unit.team}`;
-                    if (unit.injured) unitElement.classList.add('injured');
-                    unitElement.innerHTML = unit.getIcon();
-                    
-                    // Add direction indicator
-                    const directionElement = document.createElement('div');
-                    directionElement.className = 'unit-direction';
-                    directionElement.innerHTML = getDirectionSymbol(unit.direction);
-                    unitElement.appendChild(directionElement);
-                    
-                    cell.appendChild(unitElement);
-                    
-                    // Add visual feedback - change cell background
-                    cell.style.backgroundColor = unit.team === 'red' ? 'rgba(220, 20, 60, 0.3)' : 'rgba(65, 105, 225, 0.3)';
-                }
-            } else {
-                // Clear background color for empty cells
-                const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-                if (cell) {
-                    cell.style.backgroundColor = '';
-                }
+    // Move to new position
+    this.x = x;
+    this.y = y;
+    gameState.battlefield[y][x] = this;
+    this.hasMoved = true;
+    
+    return true;
+};
+
+Unit.prototype.attack = function(target) {
+    if (!target || target.team === this.team || target.cannotBeAttacked) return false;
+    replayManager.recordAction({ type: 'attack', attacker: this, target });
+    let damage = this.attack;
+    let targetDestroyed = false;
+    
+    // Check for cavalry flanking bonus against shock
+    if (this.type === 'cavalry' && target.type === 'shock') {
+        const attackDirection = this.getAttackDirection(target);
+        if (attackDirection === 'side' || attackDirection === 'rear') {
+            damage += 1; // Flanking bonus
+            gameState.addLogMessage(`${this.type} flanks ${target.type}!`, 'success');
+        }
+    }
+    
+    // Check for vulnerability to side/rear attacks (light chariots)
+    if (target.vulnerableToSideRear) {
+        const attackDirection = this.getAttackDirection(target);
+        if (attackDirection === 'side' || attackDirection === 'rear') {
+            targetDestroyed = true;
+            gameState.addLogMessage(`${target.type} vulnerable to ${attackDirection} attack!`, 'success');
+        }
+    }
+    
+    // Check immunities
+    if (target.defense === 'immune' || target.immuneToSingle) {
+        if (target.immuneToSingle && target.immuneToSingle.includes(this.type)) {
+            if (!target.previousAttacker || target.previousAttacker !== this.type) {
+                target.previousAttacker = this.type;
+                gameState.addLogMessage(`${target.type} is immune to single ${this.type} attack`, 'info');
+                return false;
             }
         }
     }
-}
-
-function getDirectionSymbol(direction) {
-    const symbols = {
-        north: '↑',
-        south: '↓',
-        east: '→',
-        west: '←'
-    };
-    return symbols[direction] || '↑';
-}
-
-function updateUI() {
-    document.getElementById('current-turn').textContent = gameState.currentTurn;
-    document.getElementById('current-phase').textContent = gameState.currentPhase;
-    document.getElementById('current-player').textContent = gameState.currentPlayer;
     
-    // Update end turn button
-    const endTurnBtn = document.getElementById('end-turn-btn');
-    if (gameState.currentPhase === 'placement') {
-        endTurnBtn.textContent = gameState.placementPhaseComplete[gameState.currentPlayer] ? 'Next Player' : 'Complete Placement';
-    } else if (gameState.currentPhase === 'battle') {
-        endTurnBtn.textContent = `End ${gameState.currentPlayer} Turn`;
-    } else if (gameState.currentPhase === 'rally') {
-        endTurnBtn.textContent = 'Continue to Next Turn';
-    }
-    
-    // Show action buttons only during battle phase
-    const actionButtons = document.querySelector('.action-buttons');
-    if (actionButtons) {
-        actionButtons.style.display = gameState.currentPhase === 'battle' ? 'block' : 'none';
-    }
-}
-
-function updateBattleLog() {
-    const logContainer = document.getElementById('log-messages');
-    logContainer.innerHTML = '';
-    
-    gameState.battleLog.slice(-10).forEach(entry => {
-        const logElement = document.createElement('p');
-        logElement.className = entry.type;
-        logElement.textContent = entry.message;
-        logContainer.appendChild(logElement);
-    });
-    
-    logContainer.scrollTop = logContainer.scrollHeight;
-}
-
-function clearSelection() {
-    gameState.selectedUnit = null;
-    gameState.selectedAction = null;
-    
-    document.querySelectorAll('.unit-item').forEach(item => {
-        item.classList.remove('selected');
-    });
-    
-    document.querySelectorAll('.btn-action').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    clearHighlights();
-    
-    document.getElementById('unit-details').innerHTML = '<p>Select a unit to view details</p>';
-}
-
-function clearHighlights() {
-    document.querySelectorAll('.battlefield-cell').forEach(cell => {
-        cell.classList.remove('valid-move', 'valid-attack', 'selected');
-    });
-}
-
-function endBattle(winner) {
-    gameState.addLogMessage(`Battle ended! ${winner} team victorious!`, 'success');
-    
-    setTimeout(() => {
-        alert(`Battle Complete!\n\nWinner: ${winner.toUpperCase()} team\n\nReturning to home page...`);
-        showPage('home');
-        gameState.reset();
-    }, 2000);
-}
-
-// Initialize event listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Navigation event listeners
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            showPage(btn.dataset.page);
-        });
-    });
-    
-    // Initialize with home page
-    showPage('home');
-    
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        if (gameState.currentPage === 'battle') {
-            switch(e.key) {
-                case 'Escape':
-                    clearSelection();
-                    break;
-                case 'Enter':
-                    if (gameState.selectedUnit && gameState.selectedAction) {
-                        // Execute selected action
-                    }
-                    break;
-                case ' ':
-                    e.preventDefault();
-                    endTurn();
-                    break;
-            }
+    // Handle heavy chariot damage
+    if (target.type === 'heavy-chariot') {
+        target.currentHitPoints -= damage;
+        if (target.currentHitPoints <= 0) {
+            targetDestroyed = true;
+        } else {
+            gameState.addLogMessage(`${target.type} takes damage (${target.currentHitPoints}/${target.hitPoints} HP remaining)`, 'info');
         }
-    });
-});
+    } else if (targetDestroyed || damage > 0) {
+        targetDestroyed = true;
+    }
+    
+    if (targetDestroyed) {
+        this.destroyUnit(target);
+        gameState.addLogMessage(`${this.type} destroys ${target.type}`, 'success');
+    } else {
+        gameState.addLogMessage(`${this.type} attacks ${target.type} but cannot penetrate defense`, 'info');
+    }
+};
+
+// Add a button to play the replay after the game ends
+function showReplayButton() {
+    const replayButton = document.createElement('button');
+    replayButton.textContent = 'Watch Replay';
+    replayButton.onclick = () => replayManager.playReplay();
+    document.body.appendChild(replayButton);
+}
+
+// Call showReplayButton when the game ends
+Unit.prototype.destroyUnit = function(target) {
+    // Remove from battlefield
+    if (target.x !== null && target.y !== null) {
+        gameState.battlefield[target.y][target.x] = null;
+    }
+    
+    // Remove from army
+    const army = target.team === 'red' ? gameState.redArmy : gameState.blueArmy;
+    const index = army.indexOf(target);
+    if (index > -1) {
+        army.splice(index, 1);
+    }
+    
+    // Check win condition
+    if (target.type === 'commander') {
+        gameState.addLogMessage(`${target.team} commander destroyed! ${this.team} wins!`, 'success');
+        showVictoryScreen(this.team);
+        showReplayButton();
+    }
+};
