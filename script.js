@@ -2,13 +2,6 @@
 class GameState {
     constructor() {
         this.currentPage = 'home';
-        this.warActive = false;
-        this.selectedCasus = null;
-        this.warObjective = '';
-        this.currentTurn = 1;
-        this.maxTurns = 6; // Default, varies by casus belli
-        this.warWeariness = false;
-        this.supplyLineIssues = false;
         this.customArmies = {
             red: [],
             blue: []
@@ -17,11 +10,6 @@ class GameState {
             maxUnits: 12,
             minUnits: 4,
             requiredCommanders: 1
-        };
-        this.warCosts = {
-            diplomaticFavor: 1,
-            armyCreation: 1, // Labor cost
-            maintenance: 1   // Food cost per army after turn 3
         };
         this.currentTurn = 1;
         this.currentPhase = 'placement'; // placement, battle, rally
@@ -420,55 +408,12 @@ function showPage(pageId) {
     }
 }
 
-// War Declaration Functions
-function selectCasus(type) {
-    gameState.selectedCasus = type;
-    
-    // Remove previous selection
-    document.querySelectorAll('.casus-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    
-    // Select new casus
-    document.querySelector(`[data-type="${type}"]`).classList.add('selected');
-    
-    // Show war details and set turn limits
-    const warDetails = document.getElementById('war-details');
-    warDetails.style.display = 'block';
-    
-    // Set turn limits based on casus belli
-    switch(type) {
-        case 'skirmish':
-        case 'raid':
-            gameState.maxTurns = 4;
-            break;
-        case 'conquest':
-        case 'subjugation':
-            gameState.maxTurns = 6;
-            break;
-    }
-    
-    checkBattleReadiness();
-}
-
 function initializeBattle() {
-    gameState.warActive = true;
     gameState.reset();
-    
-    // Apply war weariness and supply line effects
-    if (gameState.currentTurn > 4) {
-        gameState.warWeariness = true;
-        gameState.addLogMessage('War weariness sets in - all units suffer -1 combat strength', 'error');
-    }
-    
     createBattlefield();
     populateAvailableUnits();
     updateUI();
     gameState.addLogMessage('Battle initialized. Red player begins placement phase.', 'info');
-    
-    if (gameState.selectedCasus) {
-        gameState.addLogMessage(`War declared with ${gameState.selectedCasus} casus belli`, 'info');
-    }
 }
 
 // Army Builder Functions
@@ -689,18 +634,8 @@ function checkBattleReadiness() {
     let isReady = true;
     let statusMessage = '';
     
-    // Check if casus belli is selected
-    if (!gameState.selectedCasus) {
-        isReady = false;
-        statusMessage = 'Select a Casus Belli to declare war';
-    }
-    // Check war objective
-    else if (!document.getElementById('war-target')?.value && gameState.selectedCasus) {
-        isReady = false;
-        statusMessage = 'Specify your war objective';
-    }
     // Check both armies have minimum units
-    else if (redArmy.length < gameState.armyLimits.minUnits || blueArmy.length < gameState.armyLimits.minUnits) {
+    if (redArmy.length < gameState.armyLimits.minUnits || blueArmy.length < gameState.armyLimits.minUnits) {
         isReady = false;
         statusMessage = `Each army needs at least ${gameState.armyLimits.minUnits} units`;
     }
@@ -712,9 +647,7 @@ function checkBattleReadiness() {
     }
     // All good!
     else {
-        const casusBelli = gameState.selectedCasus;
-        const turns = gameState.maxTurns;
-        statusMessage = `Ready for ${casusBelli} (${turns} turn limit)! War cost: 1 Diplomatic Favor`;
+        statusMessage = 'Ready to battle!';
     }
     
     statusElement.textContent = statusMessage;
@@ -722,11 +655,8 @@ function checkBattleReadiness() {
     startButton.disabled = !isReady;
 }
 
-function startBattleWithCustomArmies() {
+function startBattle() {
     if (!document.getElementById('start-battle-btn').disabled) {
-        gameState.warObjective = document.getElementById('war-target')?.value || '';
-        gameState.addLogMessage(`War declared: ${gameState.selectedCasus} - ${gameState.warObjective}`, 'success');
-        gameState.addLogMessage(`Diplomatic cost: -1 Favor. Army creation cost: 1 Labor per army`, 'info');
         showPage('battle');
     }
 }
@@ -985,10 +915,6 @@ function endTurn() {
         if (gameState.currentPlayer === 'blue') {
             // Both players completed turn, advance to next turn
             gameState.currentTurn++;
-            
-            // Check for war mechanics
-            checkWarConditions();
-            
             gameState.nextPhase();
         } else {
             gameState.switchPlayer();
@@ -998,33 +924,6 @@ function endTurn() {
     clearSelection();
     populateAvailableUnits();
     updateUI();
-}
-
-function checkWarConditions() {
-    // War weariness after turn 4
-    if (gameState.currentTurn > 4 && !gameState.warWeariness) {
-        gameState.warWeariness = true;
-        gameState.addLogMessage('War weariness begins - units suffer -1 combat strength', 'error');
-    }
-    
-    // Extended war penalty after turn 6
-    if (gameState.currentTurn > 6) {
-        gameState.addLogMessage('Extended war penalties: +1 Food maintenance per army', 'error');
-    }
-    
-    // Check turn limits based on casus belli
-    if (gameState.currentTurn >= gameState.maxTurns) {
-        const casus = gameState.selectedCasus;
-        if (casus === 'skirmish' || casus === 'raid') {
-            gameState.addLogMessage('Turn limit reached! Evaluating war objectives...', 'error');
-            // In a full implementation, this would check victory conditions
-        }
-    }
-    
-    // Supply line issues (simplified - would check army positions in full game)
-    if (gameState.currentTurn > 2 && Math.random() < 0.3) {
-        gameState.addLogMessage('Supply line disruption! Some units may be lost if beyond expansion range', 'error');
-    }
 }
 
 function updateBattlefield() {
@@ -1078,25 +977,6 @@ function updateUI() {
         endTurnBtn.textContent = gameState.placementPhaseComplete[gameState.currentPlayer] ? 'Next Player' : 'Complete Placement';
     } else {
         endTurnBtn.textContent = 'End Turn';
-    }
-    
-    // Show war status if active
-    if (gameState.warActive && gameState.selectedCasus) {
-        const battleHeader = document.querySelector('.battle-header h2');
-        if (battleHeader) {
-            battleHeader.textContent = `Battle Arena - ${gameState.selectedCasus.toUpperCase()} (Turn ${gameState.currentTurn}/${gameState.maxTurns})`;
-        }
-    }
-    
-    // Show war effects
-    if (gameState.warWeariness) {
-        const turnInfo = document.querySelector('.turn-info');
-        if (turnInfo && !turnInfo.querySelector('.war-effects')) {
-            const warEffects = document.createElement('span');
-            warEffects.className = 'war-effects';
-            warEffects.innerHTML = '<span style="color: #dc3545;">⚠️ War Weariness</span>';
-            turnInfo.appendChild(warEffects);
-        }
     }
 }
 
