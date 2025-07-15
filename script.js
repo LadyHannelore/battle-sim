@@ -121,9 +121,10 @@ class Unit {
     }
 
     setUnitProperties() {
+        // Ensure all unit types in the properties object have a valid icon
         const properties = {
             infantry: {
-                icon: '🛡️', // Updated to ensure distinct icon
+                icon: '🛡️',
                 attack: 1,
                 defense: 0,
                 movement: 1,
@@ -154,7 +155,7 @@ class Unit {
                 cost: '1 Timber'
             },
             commander: {
-                icon: '👑', // Ensures commander icon is correctly set
+                icon: '👑',
                 attack: 1,
                 defense: 'immune',
                 movement: 1,
@@ -176,7 +177,7 @@ class Unit {
                 cost: '1 Mount'
             },
             'light-chariot': {
-                icon: '🚛', // Updated to ensure distinct icon
+                icon: '🚛',
                 attack: 1,
                 defense: 'immune-front',
                 movement: 3,
@@ -221,7 +222,7 @@ class Unit {
     }
 
     getIcon() {
-        return this.icon;
+        return this.icon || '❓'; // Fallback to a default icon if undefined
     }
 
     canMoveTo(x, y) {
