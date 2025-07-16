@@ -153,12 +153,7 @@ If you get `TypeError: token must be of type str, not NoneType`:
 2. **For Replit users**: Use the Secrets feature instead of `.env`:
    - Go to Secrets tab → Add `TOKEN` with your bot token
 
-3. **Verify token format**: Discord bot tokens look like:
-   ```
-   MTAxNzc5ODUyODIzMTI4MDY4MQ.GH3yMn.NyirUifYw2HB3_ESBzG6vTegQiXeCOjBXdpmiw
-   ```
-
-4. **Check file location**: The `.env` file must be in the same directory as `main.py`
+3. **Check file location**: The `.env` file must be in the same directory as `main.py`
 
 ### Old Commands Still Appear
 If you see old slash commands when typing `/` that are no longer in the code:
