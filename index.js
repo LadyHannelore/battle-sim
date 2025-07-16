@@ -35,6 +35,7 @@ require(deployPath);
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
+    console.log(`Repl URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
 });
 
 client.on('interactionCreate', async interaction => {
