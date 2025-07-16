@@ -74,4 +74,11 @@ async def force_sync(ctx):
         await ctx.send(f"Error during force sync: {e}")
 
 
-bot.run(os.getenv('TOKEN'))
+# Check if token is available
+token = os.getenv('TOKEN')
+if not token:
+    print("Error: TOKEN environment variable not found!")
+    print("Please check your .env file or set the TOKEN environment variable.")
+    exit(1)
+
+bot.run(token)

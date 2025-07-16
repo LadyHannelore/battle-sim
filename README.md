@@ -34,8 +34,13 @@ pip install -r requirements.txt
 
 3. Create a `.env` file in the root directory:
 ```env
-DISCORD_TOKEN=your_discord_bot_token_here
+TOKEN=your_discord_bot_token_here
 ```
+**Note**: Replace `your_discord_bot_token_here` with your actual Discord bot token.
+
+**For Replit users**: Instead of creating a `.env` file, use Replit's Secrets feature:
+- Go to the "Secrets" tab in your Replit project
+- Add a new secret with key `TOKEN` and your bot token as the value
 
 4. Run the bot:
 ```bash
@@ -136,6 +141,24 @@ python utils/battlefield_renderer.py
 This will generate a test image showing the battlefield visualization.
 
 ## Troubleshooting
+
+### Token Error (NoneType)
+If you get `TypeError: token must be of type str, not NoneType`:
+
+1. **Check your `.env` file exists** and contains:
+   ```env
+   TOKEN=your_actual_bot_token_here
+   ```
+
+2. **For Replit users**: Use the Secrets feature instead of `.env`:
+   - Go to Secrets tab → Add `TOKEN` with your bot token
+
+3. **Verify token format**: Discord bot tokens look like:
+   ```
+   MTAxNzc5ODUyODIzMTI4MDY4MQ.GH3yMn.NyirUifYw2HB3_ESBzG6vTegQiXeCOjBXdpmiw
+   ```
+
+4. **Check file location**: The `.env` file must be in the same directory as `main.py`
 
 ### Old Commands Still Appear
 If you see old slash commands when typing `/` that are no longer in the code:
