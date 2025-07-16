@@ -1,8 +1,20 @@
-modules = ["nodejs-20", "web"]
-run = "node index.js"
-
+modules = ["python-3.11"]
 [nix]
-channel = "stable-24_05"
+channel = "stable-23_05"
+python310Packages = [
+  "discord-py",
+  "python-dotenv",
+  "pillow"
+]
 
-[deployment]
-run = ["sh", "-c", "node index.js"]
+[workflows]
+runButton = "Run Discord Bot"
+
+[[workflows.workflow]]
+name = "Run Discord Bot"
+author = 45094883
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"

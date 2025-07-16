@@ -383,7 +383,7 @@ class GameManager:
         if battle.phase != 'ended':
             return {"success": False, "message": "Battle is not finished yet."}
         
-        loser_id = battle.winner == game.aggressor['id'] and game.defender['id'] or game.aggressor['id']
+        loser_id = game.defender['id'] if battle.winner == game.aggressor['id'] else game.aggressor['id']
         
         loser_armies = game.armies[loser_id]
         battle_army_ids = [army['id'] for army in battle.armies if army['owner'] == loser_id]
