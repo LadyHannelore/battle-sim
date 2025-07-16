@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ChannelType, EmbedBuilder } = require('discord.js');
-const { gameManager } = require('../../game/gameManager');
+const { gameManager } = require('../game/gameManager');
 
 function getWarDetails(casusBelli, details, aggressor, defender) {
     const embed = new EmbedBuilder()
