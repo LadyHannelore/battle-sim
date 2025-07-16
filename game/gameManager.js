@@ -34,6 +34,11 @@ class GameState {
             [aggressor.id]: [],
             [defender.id]: []
         };
+        this.settlements = {
+            [aggressor.id]: [{ x: 10, y: 18 }], // Default settlement for aggressor
+            [defender.id]: [{ x: 10, y: 2 }]  // Default settlement for defender
+        };
+        this.map = new Collection(); // Key: "x,y", Value: army object
         this.resources = {
             [aggressor.id]: { bronze: 5, timber: 5, mounts: 5, food: 10 },
             [defender.id]: { bronze: 5, timber: 5, mounts: 5, food: 10 }
@@ -52,6 +57,87 @@ class GameState {
         };
         this.armies[playerId].push(army);
         return army;
+    }
+
+    placeArmy(playerId, armyId, x, y) {
+        const army = this.getArmy(playerId, armyId);
+        if (!army) return { success: false, message: "Army not found." };
+        if (army.position) return { success: false, message: "This army has already been placed." };
+
+        const playerSettlements = this.settlements[playerId];
+        const isNearSettlement = playerSettlements.some(s => Math.abs(s.x - x) <= 1 && Math.abs(s.y - y) <= 1);
+
+        if (!isNearSettlement) {
+            return { success: false, message: "You must place armies on or adjacent to one of your settlements." };
+        }
+
+        const mapKey = `${x},${y}`;
+        if (this.map.has(mapKey)) {
+            // Allow up to 2 armies on the same tile
+            const armiesOnTile = this.map.get(mapKey);
+            if (armiesOnTile.length >= 2) {
+                return { success: false, message: "A tile cannot hold more than two armies." };
+            }
+            armiesOnTile.push(army);
+        } else {
+            this.map.set(mapKey, [army]);
+        }
+
+        army.position = { x, y };
+        return { success: true, message: `Army #${army.id} placed at (${x}, ${y}).` };
+    }
+
+    moveArmy(playerId, armyId, newX, newY) {
+        const army = this.getArmy(playerId, armyId);
+        if (!army) return { success: false, message: "Army not found." };
+        if (!army.position) return { success: false, message: "This army has not been placed on the map yet." };
+
+        const { x: oldX, y: oldY } = army.position;
+        const distance = Math.abs(oldX - newX) + Math.abs(oldY - newY); // Manhattan distance
+
+        if (distance === 0) return { success: false, message: "The army is already at that position." };
+        if (distance > 3) return { success: false, message: `You can only move up to 3 tiles. Distance to (${newX}, ${newY}) is ${distance} tiles.` };
+
+        // Check resource cost for moving outside expansion range
+        const playerSettlements = this.settlements[playerId];
+        const isInExpansionRange = playerSettlements.some(s => Math.abs(s.x - newX) <= 3 && Math.abs(s.y - newY) <= 3);
+
+        if (!isInExpansionRange) {
+            if (this.resources[playerId].food < 1) {
+                return { success: false, message: "You need at least 1 food to move an army outside your expansion range." };
+            }
+            this.resources[playerId].food -= 1;
+        }
+
+        // Update map
+        const oldMapKey = `${oldX},${oldY}`;
+        const armiesOnOldTile = this.map.get(oldMapKey).filter(a => a.id !== armyId || a.owner !== playerId); // A bit complex if IDs aren't unique across players
+        if (armiesOnOldTile.length > 0) {
+            this.map.set(oldMapKey, armiesOnOldTile);
+        } else {
+            this.map.delete(oldMapKey);
+        }
+
+        const newMapKey = `${newX},${newY}`;
+        if (this.map.has(newMapKey)) {
+            const armiesOnNewTile = this.map.get(newMapKey);
+            if (armiesOnNewTile.length >= 2) {
+                // Move failed, revert map change
+                if (this.map.has(oldMapKey)) this.map.get(oldMapKey).push(army);
+                else this.map.set(oldMapKey, [army]);
+                return { success: false, message: "A tile cannot hold more than two armies." };
+            }
+            armiesOnNewTile.push(army);
+        } else {
+            this.map.set(newMapKey, [army]);
+        }
+
+        army.position = { x: newX, y: newY };
+        let replyMessage = `Army #${army.id} moved from (${oldX}, ${oldY}) to (${newX}, ${newY}).`;
+        if (!isInExpansionRange) {
+            replyMessage += " 1 food was consumed.";
+        }
+        return { success: true, message: replyMessage };
     }
 
     modifyArmy(playerId, armyId, modification) {

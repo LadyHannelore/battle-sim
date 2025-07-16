@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const keepAlive = require('./server');
 
 const client = new Client({
     intents: [
@@ -27,6 +28,10 @@ for (const file of commandFiles) {
         console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
     }
 }
+
+// Deploy commands
+const deployPath = path.join(__dirname, 'deploy-commands.js');
+require(deployPath);
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -56,3 +61,5 @@ client.on('interactionCreate', async interaction => {
 
 
 client.login(process.env.DISCORD_TOKEN);
+
+keepAlive();
