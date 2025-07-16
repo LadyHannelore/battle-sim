@@ -67,7 +67,13 @@ class Battle(discord.Cog):
                 f"**Next Steps:**\n"
                 f"• Use `/army view` to see your armies\n"
                 f"• Use `/army modify` to customize your armies\n"
-                f"• Use `/battle start` to begin the battle"
+                f"• Use `/battle start` to begin the battle\n"
+                f"• INFANTRY = 5 Infantry Units (Starter)"
+                f"• SHOCK = 3 Shock Units (1 Bronze)"
+                f"• ARCHER = 3 Archer Units (1 Timber)"
+                f"• COMMANDER = 1 Commander (Starter)"
+                f"• CAVALRY = 4 Cavalry Units (1 Mount)"
+                f"• CHARIOT = 2 Chariot Units (1 Mount)"
             ),
             color=discord.Color.red()
         )
