@@ -47,6 +47,15 @@ class GameManager {
 }
 
 class GameState {
+
+    disbandArmy(playerId, armyId) {
+        const armies = this.armies[playerId];
+        if (!armies) return { success: false, message: 'No armies found for this player.' };
+        const index = armies.findIndex(a => a.id === armyId);
+        if (index === -1) return { success: false, message: `Army #${armyId} not found.` };
+        armies.splice(index, 1);
+        return { success: true, message: `Army #${armyId} has been disbanded.` };
+    }
     constructor(aggressor, defender) {
         this.aggressor = aggressor;
         this.defender = defender;
@@ -163,6 +172,29 @@ class GameState {
 }
 
 class Battle {
+
+    forfeitBattle(playerId) {
+        if (this.phase === 'ended') {
+            return { success: false, message: 'The battle has already ended.' };
+        }
+        let winner, loser;
+        if (playerId === this.aggressorId) {
+            winner = this.defenderId;
+            loser = this.aggressorId;
+        } else if (playerId === this.defenderId) {
+            winner = this.aggressorId;
+            loser = this.defenderId;
+        } else {
+            return { success: false, message: 'You are not a participant in this battle.' };
+        }
+        this.phase = 'ended';
+        this.log.push({
+            type: 'forfeit',
+            playerId,
+            message: `Player <@${playerId}> forfeited the battle. <@${winner}> is the winner!`
+        });
+        return { success: true, battleEnded: true, winner, message: `<@${playerId}> forfeited. <@${winner}> wins the battle!` };
+    }
     constructor(aggressorId, defenderId, armies) {
         this.aggressorId = aggressorId;
         this.defenderId = defenderId;
@@ -175,6 +207,7 @@ class Battle {
             [defenderId]: []
         };
         this.totalUnitCount = this.countTotalUnits();
+        this.log = [];
     }
 
     countTotalUnits() {
@@ -223,6 +256,15 @@ class Battle {
             hasActed: false
         };
         this.placedUnits[playerId].push({ type: unitType, x, y });
+        this.log.push({
+            type: 'place',
+            playerId,
+            unitType,
+            x,
+            y,
+            orientation: orientation || 'north',
+            message: `Placed ${unitType} at (${x},${y}) facing ${orientation || 'north'}.`
+        });
 
         const totalPlaced = this.placedUnits[this.aggressorId].length + this.placedUnits[this.defenderId].length;
         if (totalPlaced >= this.totalUnitCount) {
@@ -292,7 +334,16 @@ class Battle {
         this.board[toY][toX] = chariot;
         this.board[fromY][fromX] = null;
         chariot.hasActed = true;
-        
+        this.log.push({
+            type: 'chariot_charge',
+            playerId,
+            fromX,
+            fromY,
+            toX,
+            toY,
+            targetType: target.type,
+            message: `Chariot charged from (${fromX},${fromY}) to (${toX},${toY}) and destroyed the enemy ${target.type}!`
+        });
         return { success: true, message: `Chariot charged from (${fromX},${fromY}) to (${toX},${toY}) and destroyed the enemy ${target.type}!` };
     }
 
@@ -310,6 +361,15 @@ class Battle {
         // Apply injury
         target.status = 'injured';
         archer.hasActed = true;
+        this.log.push({
+            type: 'archer_fire',
+            playerId,
+            fromX,
+            fromY,
+            toX,
+            toY,
+            message: `Archer at (${fromX},${fromY}) fired at (${toX},${toY}) and injured the enemy!`
+        });
         return { success: true, message: `Archer at (${fromX},${fromY}) fired at (${toX},${toY}) and injured the enemy!` };
     }
 
@@ -322,7 +382,9 @@ class Battle {
         if (unit.owner !== playerId) return { success: false, message: "You do not own that unit." };
         if (unit.hasActed) return { success: false, message: "That unit has already acted this turn." };
 
-        if (this.board[toY][toX]) return { success: false, message: "The destination tile is occupied." };
+}
+
+    checkBattleEnd() {
 
         const props = this.getUnitProperties(unit.type);
         const distance = Math.abs(fromX - toX) + Math.abs(fromY - toY);
@@ -337,7 +399,16 @@ class Battle {
         this.board[toY][toX] = unit;
         this.board[fromY][fromX] = null;
         unit.hasActed = true;
-
+        this.log.push({
+            type: 'move',
+            playerId,
+            unitType: unit.type,
+            fromX,
+            fromY,
+            toX,
+            toY,
+            message: `Moved ${unit.type} from (${fromX},${fromY}) to (${toX},${toY}).`
+        });
         return { success: true, message: `Moved ${unit.type} from (${fromX},${fromY}) to (${toX},${toY}).` };
     }
 
@@ -352,7 +423,15 @@ class Battle {
 
         unit.orientation = newOrientation;
         unit.hasActed = true;
-
+        this.log.push({
+            type: 'turn',
+            playerId,
+            unitType: unit.type,
+            x,
+            y,
+            newOrientation,
+            message: `Turned ${unit.type} at (${x},${y}) to face ${newOrientation}.`
+        });
         return { success: true, message: `Turned ${unit.type} at (${x},${y}) to face ${newOrientation}.` };
     }
 
@@ -388,6 +467,12 @@ class Battle {
         }
         // Remove destroyed units
         for (const [x, y] of toRemove) {
+            this.log.push({
+                type: 'destroy',
+                x,
+                y,
+                message: `Unit at (${x},${y}) was destroyed during attack resolution.`
+            });
             this.board[y][x] = null;
         }
 
@@ -395,6 +480,11 @@ class Battle {
         const battleResult = this.checkBattleEnd();
         if (battleResult.ended) {
             this.phase = 'ended';
+            this.log.push({
+                type: 'end',
+                winner: battleResult.winner,
+                message: battleResult.message
+            });
             return { success: true, battleEnded: true, winner: battleResult.winner, message: battleResult.message };
         }
 
@@ -408,9 +498,18 @@ class Battle {
                 }
             }
         }
+        this.log.push({
+            type: 'end_turn',
+            playerId,
+            message: `Turn ended. Attacks resolved. It is now the other player's turn.`
+        });
         return { success: true, message: `Turn ended. Attacks resolved. It is now the other player's turn.` };
     }
 
+    getHistory() {
+        return this.log;
+    }
+    checkBattleEnd() {
     checkBattleEnd() {
         // Check if any commander is dead
         let aggressorCommander = null;
@@ -677,10 +776,7 @@ class Battle {
         }
         return boardString;
     }
-
-    // ...existing code...
 }
-
 // Singleton instance
 const gameManager = new GameManager();
 module.exports = { gameManager, GameState };

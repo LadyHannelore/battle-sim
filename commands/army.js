@@ -30,7 +30,15 @@ module.exports = {
                             { name: '3 Archer Units (1 Timber)', value: 'archer' },
                             { name: '4 Cavalry Units (1 Mount)', value: 'cavalry' },
                             { name: '2 Chariot Units (1 Mount)', value: 'chariot' }
-                        ))),
+                        )))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('disband')
+                .setDescription('Disband (delete) one of your armies.')
+                .addIntegerOption(option =>
+                    option.setName('army_id')
+                        .setDescription('The ID of the army to disband.')
+                        .setRequired(true))),
     async execute(interaction) {
         const game = gameManager.getGame(interaction.channelId);
 
@@ -79,6 +87,15 @@ module.exports = {
 
             if (result.success) {
                 await interaction.reply(result.message);
+            } else {
+                await interaction.reply({ content: result.message, ephemeral: true });
+            }
+        }
+        else if (subcommand === 'disband') {
+            const armyId = interaction.options.getInteger('army_id');
+            const result = game.disbandArmy(interaction.user.id, armyId);
+            if (result.success) {
+                await interaction.reply(`🗑️ Army #${armyId} has been disbanded.`);
             } else {
                 await interaction.reply({ content: result.message, ephemeral: true });
             }

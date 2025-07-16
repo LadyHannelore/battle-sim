@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { gameManager } = require('../game/gameManager');
+const { generateBattlefieldImage } = require('../game/battlefieldImage');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -74,7 +75,15 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('status')
-                .setDescription('Check the current battle status and remaining units.')),
+                .setDescription('Check the current battle status and remaining units.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('history')
+                .setDescription('Show a log of previous turns and actions in the current battle.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('forfeit')
+                .setDescription('Forfeit (surrender) the current battle.')),
 
     async execute(interaction) {
         const game = gameManager.getGame(interaction.channelId);
@@ -187,16 +196,20 @@ module.exports = {
                 const winnerUser = result.winner === game.aggressor.id ? game.aggressor : game.defender;
                 const loserUser = result.winner === game.aggressor.id ? game.defender : game.aggressor;
                 
+                const imageBuffer = await generateBattlefieldImage(
+                    game.battle.board,
+                    { aggressor: game.aggressor.username, defender: game.defender.username }
+                );
                 const embed = new EmbedBuilder()
                     .setTitle('🏆 Battle Concluded!')
                     .setDescription(`**${winnerUser.username} has won the battle!**\n\n${result.message}`)
                     .setColor(result.winner === game.aggressor.id ? 0xFF0000 : 0x0000FF)
-                    .addFields({ name: 'Final Battlefield', value: '`' + game.battle.renderBoard() + '`' });
+                    .addFields({ name: 'Final Battlefield', value: 'See image below.' });
 
                 // End the battle and update game state
                 gameManager.endBattle(interaction.channelId);
                 
-                await interaction.reply({ embeds: [embed] });
+                await interaction.reply({ embeds: [embed], files: [{ attachment: imageBuffer, name: 'battlefield.png' }] });
                 return;
             }
 
@@ -204,9 +217,13 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('Action Taken!')
                 .setDescription(result.message)
-                .addFields({ name: 'Battlefield', value: '`' + boardString + '`' });
+                .addFields({ name: 'Battlefield', value: 'See image below.' });
 
-            await interaction.reply({ embeds: [embed] });
+            const imageBuffer = await generateBattlefieldImage(
+                game.battle.board,
+                { aggressor: game.aggressor.username, defender: game.defender.username }
+            );
+            await interaction.reply({ embeds: [embed], files: [{ attachment: imageBuffer, name: 'battlefield.png' }] });
         }
         else if (subcommand === 'status') {
             if (!game.battle) {
@@ -233,6 +250,34 @@ module.exports = {
                     { name: 'Battlefield', value: '`' + boardString + '`' }
                 );
 
+            await interaction.reply({ embeds: [embed] });
+        }
+        else if (subcommand === 'forfeit') {
+            if (!game.battle) {
+                return interaction.reply({ content: 'There is no battle in progress.', ephemeral: true });
+            }
+            const result = game.battle.forfeitBattle(interaction.user.id);
+            if (!result.success) {
+                return interaction.reply({ content: result.message, ephemeral: true });
+            }
+            // End the battle and update game state
+            gameManager.endBattle(interaction.channelId);
+            await interaction.reply({ content: result.message });
+        }
+        else if (subcommand === 'history') {
+            if (!game.battle) {
+                return interaction.reply({ content: 'There is no battle in progress.', ephemeral: true });
+            }
+            const log = game.battle.getHistory();
+            if (!log.length) {
+                return interaction.reply({ content: 'No actions have been taken yet in this battle.', ephemeral: true });
+            }
+            // Show the last 15 actions for brevity
+            const recent = log.slice(-15);
+            const historyText = recent.map((entry, i) => `${i + log.length - recent.length + 1}. ${entry.message}`).join('\n');
+            const embed = new EmbedBuilder()
+                .setTitle('📜 Battle History')
+                .setDescription(historyText);
             await interaction.reply({ embeds: [embed] });
         }
     },
