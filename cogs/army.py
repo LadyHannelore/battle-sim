@@ -93,9 +93,13 @@ class Army(discord.Cog):
         from game.enums import UnitType
         mod_map = {
             "3 Shock Units (1 Bronze)": UnitType.SHOCK,
+            "shock": UnitType.SHOCK,
             "3 Archer Units (1 Timber)": UnitType.ARCHER,
+            "archer": UnitType.ARCHER,
             "4 Cavalry Units (1 Mount)": UnitType.CAVALRY,
-            "2 Chariot Units (1 Mount)": UnitType.CHARIOT
+            "cavalry": UnitType.CAVALRY,
+            "2 Chariot Units (1 Mount)": UnitType.CHARIOT,
+            "chariot": UnitType.CHARIOT
         }
 
         result = game.modify_army(
