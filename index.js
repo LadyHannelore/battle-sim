@@ -85,7 +85,7 @@ function keepAlive() {
     fetch(`http://localhost:${port}`)
       .then(res => console.log(`Self-ping: ${res.status}`))
       .catch(err => console.error('Ping error:', err));
-  }, 240000); // 4 minutes
+  }, 20000); // 4 minutes
 }
 
 // Start self-pinging when bot is ready
