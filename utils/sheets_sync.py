@@ -62,3 +62,21 @@ def sync_battle(battle_dict):
     log_str = " | ".join(e.get("message", "") for e in battle_dict.get("log", []))
     row = [battle_dict.get("id", ""), battle_dict.get("aggressor", ""), battle_dict.get("defender", ""), battle_dict.get("winner", ""), armies_str, log_str]
     ws.append_row(row)
+
+# --- Persistent battle thread tracking ---
+def get_active_battle_threads():
+    """Return a set of active battle thread IDs from the 'ActiveBattles' worksheet."""
+    ws = get_worksheet("ActiveBattles")
+    values = ws.get_all_values()
+    if not values or values[0] != ["ThreadID"]:
+        ws.insert_row(["ThreadID"], 1)
+        return set()
+    return set(row[0] for row in values[1:] if row)
+
+def set_active_battle_threads(thread_ids):
+    """Replace the list of active battle thread IDs in the 'ActiveBattles' worksheet."""
+    ws = get_worksheet("ActiveBattles")
+    ws.clear()
+    ws.append_row(["ThreadID"])
+    for tid in thread_ids:
+        ws.append_row([str(tid)])
