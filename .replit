@@ -1,6 +1,7 @@
-modules = ["python-3.11"]
+modules = ["python-3.12"]
+run = "python main.py"
 [nix]
-channel = "stable-23_05"
+channel = "stable-24_05"
 python310Packages = [
   "discord-py",
   "python-dotenv",
@@ -18,3 +19,6 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main.py"
+
+[deployment]
+run = ["sh", "-c", "python main.py"]
