@@ -1,5 +1,19 @@
 [nix]
 channel = "stable-23_05"
 python310Packages = [
-
+  "discord-py",
+  "python-dotenv",
+  "pillow"
 ]
+
+[workflows]
+runButton = "Run Discord Bot"
+
+[[workflows.workflow]]
+name = "Run Discord Bot"
+author = 45094883
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
