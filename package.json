@@ -16,9 +16,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/rest": "^2.5.1",
     "canvas": "^3.1.2",
+    "discord-api-types": "^0.38.16",
     "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "node-fetch": "^2.7.0"
   }

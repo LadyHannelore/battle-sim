@@ -38,14 +38,51 @@ for (const file of commandFiles) {
 }
 
 
-// Deploy slash commands to Discord (registers commands with Discord API)
-const deployPath = path.join(__dirname, 'deploy-commands.js');
-require(deployPath);
+
+// --- Register slash commands directly from this file ---
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v10');
+
+const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
+
+// Prepare command data for registration
+const commands = [];
+for (const command of client.commands.values()) {
+    if (command.data) {
+        commands.push(command.data.toJSON ? command.data.toJSON() : command.data);
+    }
+}
+
+async function registerCommands() {
+    try {
+        const rest = new REST({ version: '10' }).setToken(TOKEN);
+        console.log('Registering commands...');
+        if (GUILD_ID) {
+            await rest.put(
+                Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+                { body: commands }
+            );
+            console.log(`Registered commands to guild: ${GUILD_ID}`);
+        } else {
+            await rest.put(
+                Routes.applicationCommands(CLIENT_ID),
+                { body: commands }
+            );
+            console.log('Registered commands globally');
+        }
+    } catch (error) {
+        console.error('Failed to register commands:', error);
+    }
+}
 
 
 // Bot ready event
-client.once('ready', () => {
+
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
+    await registerCommands();
     // If running on Replit, print the public URL
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
         console.log(`Repl URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
@@ -83,7 +120,7 @@ client.on('interactionCreate', async interaction => {
 
 
 // Log in to Discord
-client.login(process.env.DISCORD_TOKEN);
+client.login(TOKEN);
 
 // --- Optional: Express HTTP server for uptime monitoring (e.g., Replit, UptimeRobot) ---
 const express = require('express');
