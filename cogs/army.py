@@ -75,22 +75,8 @@ class Army(discord.Cog):
     async def modify(
         self,
         ctx: discord.ApplicationContext,
-        army_id: discord.Option(
-            int,
-            description="The ID of the army to modify.",
-            required=True
-        ),
-        modification: discord.Option(
-            str,
-            description="The unit modification to purchase.",
-            required=True,
-            choices=[
-                '3 Shock Units (1 Bronze)',
-                '3 Archer Units (1 Timber)',
-                '4 Cavalry Units (1 Mount)',
-                '2 Chariot Units (1 Mount)'
-            ]
-        )
+        army_id: int,
+        modification: str
     ):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
@@ -101,10 +87,10 @@ class Army(discord.Cog):
             return
 
         mod_map = {
-            '3 Shock Units (1 Bronze)': 'shock',
-            '3 Archer Units (1 Timber)': 'archer',
-            '4 Cavalry Units (1 Mount)': 'cavalry',
-            '2 Chariot Units (1 Mount)': 'chariot'
+            "3 Shock Units (1 Bronze)": "shock",
+            "3 Archer Units (1 Timber)": "archer",
+            "4 Cavalry Units (1 Mount)": "cavalry",
+            "2 Chariot Units (1 Mount)": "chariot"
         }
 
         result = game.modify_army(
@@ -120,11 +106,7 @@ class Army(discord.Cog):
     async def disband(
         self,
         ctx: discord.ApplicationContext,
-        army_id: discord.Option(
-            int,
-            description="The ID of the army to disband.",
-            required=True
-        )
+        army_id: int
     ):
         game = game_manager.get_game(ctx.channel_id)
         if not game:

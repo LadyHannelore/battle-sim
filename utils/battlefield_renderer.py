@@ -1,7 +1,10 @@
 from PIL import Image, ImageDraw, ImageFont
+from typing import List, Optional, Dict, Any
+
 
 class BattlefieldRenderer:
-    def __init__(self, board, tile_size=64):
+    def __init__(self, board: List[List[Optional[Dict[str, Any]]]],
+                 tile_size: int = 64):
         self.board = board
         self.tile_size = tile_size
         self.width = 9 * tile_size
@@ -20,8 +23,14 @@ class BattlefieldRenderer:
 
     def draw_grid(self):
         for i in range(10):
-            self.draw.line([(i * self.tile_size, 0), (i * self.tile_size, self.height)], fill='black')
-            self.draw.line([(0, i * self.tile_size), (self.width, i * self.tile_size)], fill='black')
+            self.draw.line(
+                [(i * self.tile_size, 0), (i * self.tile_size, self.height)],
+                fill='black'
+            )
+            self.draw.line(
+                [(0, i * self.tile_size), (self.width, i * self.tile_size)],
+                fill='black'
+            )
 
     def draw_units(self):
         for y, row in enumerate(self.board):
@@ -30,20 +39,27 @@ class BattlefieldRenderer:
                     emoji = self.unit_emojis.get(unit['type'], '❓')
                     pos_x = x * self.tile_size + self.tile_size // 4
                     pos_y = y * self.tile_size + self.tile_size // 4
-                    
-                    # This is a simplified way to draw emojis. For better quality, you might need a library
-                    # that can handle emoji rendering properly, or use images for units.
+
+                    # This is a simplified way to draw emojis.
+                    # For better quality, you might need a library
+                    # that can handle emoji rendering properly,
+                    # or use images for units.
                     try:
-                        self.draw.text((pos_x, pos_y), emoji, font=self.font, fill="black")
+                        self.draw.text(
+                            (pos_x, pos_y), emoji, font=self.font,
+                            fill="black"
+                        )
                     except Exception as e:
                         print(f"Could not render emoji {emoji}: {e}")
-                        self.draw.text((pos_x, pos_y), "?", font=self.font, fill="black")
-
+                        self.draw.text(
+                            (pos_x, pos_y), "?", font=self.font,
+                            fill="black"
+                        )
 
     def render_board(self):
         self.draw_grid()
         self.draw_units()
-        
+
         # In-memory buffer
         import io
         img_byte_arr = io.BytesIO()
@@ -51,14 +67,17 @@ class BattlefieldRenderer:
         img_byte_arr.seek(0)
         return img_byte_arr
 
+
 if __name__ == '__main__':
     # Example usage
-    mock_board = [[None for _ in range(9)] for _ in range(9)]
+    mock_board: List[List[Optional[Dict[str, Any]]]] = [
+        [None for _ in range(9)] for _ in range(9)
+    ]
     mock_board[0][0] = {"type": "infantry", "owner": 1}
     mock_board[8][8] = {"type": "commander", "owner": 2}
-    
+
     renderer = BattlefieldRenderer(mock_board)
     image_buffer = renderer.render_board()
-    
+
     with open("battlefield_test.png", "wb") as f:
         f.write(image_buffer.read())

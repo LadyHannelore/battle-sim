@@ -1,5 +1,3 @@
-import random
-
 class Battle:
     def __init__(self, aggressor_id, defender_id, armies):
         self.aggressor_id = aggressor_id
@@ -88,10 +86,8 @@ class Battle:
         winner, loser = (None, None)
         if player_id == self.aggressor_id:
             winner = self.defender_id
-            loser = self.aggressor_id
         elif player_id == self.defender_id:
             winner = self.aggressor_id
-            loser = self.defender_id
         else:
             return {"success": False, "message": 'You are not a participant in this battle.'}
         
@@ -154,10 +150,14 @@ class Battle:
                     continue
                 
                 tx, ty = x, y
-                if unit['orientation'] == 'north': ty -= 1
-                elif unit['orientation'] == 'south': ty += 1
-                elif unit['orientation'] == 'east': tx += 1
-                elif unit['orientation'] == 'west': tx -= 1
+                if unit['orientation'] == 'north':
+                    ty -= 1
+                elif unit['orientation'] == 'south':
+                    ty += 1
+                elif unit['orientation'] == 'east':
+                    tx += 1
+                elif unit['orientation'] == 'west':
+                    tx -= 1
 
                 if not (0 <= tx <= 8 and 0 <= ty <= 8):
                     continue
@@ -331,7 +331,11 @@ class GameState:
             else:
                 army['units'].append(new_unit)
 
-        return {"success": True, "message": f"Army #{army_id} successfully modified with {', '.join(f'{u['count']} {u['type']}' for u in new_units)}."}
+        unit_descriptions = []
+        for u in new_units:
+            unit_descriptions.append(f"{u['count']} {u['type']}")
+        units_text = ', '.join(unit_descriptions)
+        return {"success": True, "message": f"Army #{army_id} successfully modified with {units_text}."}
 
     def start_battle(self, aggressor_army_id, defender_army_id):
         aggressor_army = self.get_army(self.aggressor['id'], aggressor_army_id)
@@ -389,5 +393,6 @@ class GameManager:
         game.battle = None
         
         return {"success": True, "message": "Battle concluded. Defeated army has been removed."}
+
 
 game_manager = GameManager()

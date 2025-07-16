@@ -12,9 +12,13 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')
+    if bot.user is not None:
+        print(f'Logged in as {bot.user.name}')
+    else:
+        print('Logged in as Unknown User')
     print('-------------------')
 
 # Load cogs
@@ -25,6 +29,7 @@ for filename in os.listdir('./cogs'):
             print(f'Loaded cog: {filename}')
         except Exception as e:
             print(f'Failed to load cog {filename}: {e}')
+
 
 @bot.command()
 @commands.is_owner()

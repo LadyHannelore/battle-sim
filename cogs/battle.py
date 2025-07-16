@@ -2,6 +2,7 @@ import discord
 from discord.commands import SlashCommandGroup
 from game.game_manager import game_manager
 from utils.battlefield_renderer import BattlefieldRenderer
+from typing import Optional
 
 
 class Battle(discord.Cog):
@@ -14,16 +15,8 @@ class Battle(discord.Cog):
     async def start(
         self,
         ctx: discord.ApplicationContext,
-        aggressor_army: discord.Option(
-            int,
-            description="The aggressor army ID.",
-            required=True
-        ),
-        defender_army: discord.Option(
-            int,
-            description="The defender army ID.",
-            required=True
-        )
+        aggressor_army: int,
+        defender_army: int
     ):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
@@ -64,30 +57,10 @@ class Battle(discord.Cog):
     async def place(
         self,
         ctx: discord.ApplicationContext,
-        unit_type: discord.Option(
-            str,
-            description="The type of unit to place.",
-            required=True,
-            choices=['infantry', 'commander', 'shock', 'archer',
-                     'cavalry', 'chariot']
-        ),
-        x: discord.Option(
-            int,
-            description="The x-coordinate.",
-            required=True
-        ),
-        y: discord.Option(
-            int,
-            description="The y-coordinate.",
-            required=True
-        ),
-        orientation: discord.Option(
-            str,
-            description="The direction the unit will face.",
-            required=False,
-            choices=['north', 'east', 'south', 'west'],
-            default='north'
-        )
+        unit_type: str,
+        x: int,
+        y: int,
+        orientation: str = "north"
     ):
         game = game_manager.get_game(ctx.channel_id)
         if not game or not game.battle:
@@ -120,40 +93,12 @@ class Battle(discord.Cog):
     async def action(
         self,
         ctx: discord.ApplicationContext,
-        action_type: discord.Option(
-            str,
-            description="The type of action.",
-            required=True,
-            choices=['move', 'turn', 'end_turn', 'archer_fire',
-                     'chariot_charge', 'start_rally', 'rally_unit',
-                     'end_rally_turn', 'end_rally_phase']
-        ),
-        from_x: discord.Option(
-            int,
-            description="Starting x-coordinate.",
-            required=False
-        ),
-        from_y: discord.Option(
-            int,
-            description="Starting y-coordinate.",
-            required=False
-        ),
-        to_x: discord.Option(
-            int,
-            description="Destination x-coordinate.",
-            required=False
-        ),
-        to_y: discord.Option(
-            int,
-            description="Destination y-coordinate.",
-            required=False
-        ),
-        orientation: discord.Option(
-            str,
-            description="New orientation for turning.",
-            required=False,
-            choices=['north', 'east', 'south', 'west']
-        )
+        action_type: str,
+        from_x: Optional[int] = None,
+        from_y: Optional[int] = None,
+        to_x: Optional[int] = None,
+        to_y: Optional[int] = None,
+        orientation: Optional[str] = None
     ):
         game = game_manager.get_game(ctx.channel_id)
         if not game or not game.battle:
