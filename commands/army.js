@@ -43,7 +43,7 @@ module.exports = {
         if (subcommand === 'create') {
             // In a real implementation, you would check and consume 1 labor resource here.
             const army = game.addArmy(interaction.user.id);
-            await interaction.reply(`You have created Army #${army.id}. It starts with 5 infantry and 1 commander.`);
+            await interaction.reply(`✅ **Army #${army.id} created!** \nStarting units: 5 infantry, 1 commander\n\n💡 **Next steps:**\n• Use \`/army modify\` to customize your army\n• Use \`/battle start\` to fight with this army`);
         } else if (subcommand === 'view') {
             const playerArmies = game.armies[interaction.user.id];
             if (!playerArmies || playerArmies.length === 0) {
@@ -52,11 +52,21 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setTitle(`${interaction.user.username}'s Armies`)
+                .setDescription('🏹 **Ready for Battle!** Use `/battle start` with these army IDs to begin combat.')
                 .setColor('#A52A2A');
 
             playerArmies.forEach(army => {
                 const unitsString = army.units.map(u => `${u.count} ${u.type}`).join(', ');
-                embed.addFields({ name: `Army #${army.id}`, value: `Units: ${unitsString}` });
+                embed.addFields({ 
+                    name: `Army #${army.id} ⚔️`, 
+                    value: `**Units:** ${unitsString}`,
+                    inline: true
+                });
+            });
+
+            embed.addFields({ 
+                name: 'Battle Instructions', 
+                value: '💡 Use `/battle start aggressor_army:[ID] defender_army:[ID]` to fight!'
             });
 
             await interaction.reply({ embeds: [embed] });

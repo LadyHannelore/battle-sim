@@ -21,6 +21,29 @@ class GameManager {
     endGame(channelId) {
         return this.games.delete(channelId);
     }
+
+    endBattle(channelId) {
+        const game = this.getGame(channelId);
+        if (!game || !game.battle) return { success: false, message: "No active battle found." };
+        
+        const battle = game.battle;
+        if (battle.phase !== 'ended') return { success: false, message: "Battle is not finished yet." };
+        
+        // Handle battle aftermath - remove defeated army
+        const loser = battle.winner === game.aggressor.id ? game.defender.id : game.aggressor.id;
+        
+        // Find and remove the defeated army from the loser's armies
+        const loserArmies = game.armies[loser];
+        const battleArmyIds = battle.armies.filter(army => army.owner === loser).map(army => army.id);
+        
+        // Remove defeated armies
+        game.armies[loser] = loserArmies.filter(army => !battleArmyIds.includes(army.id));
+        
+        // Clear the battle
+        game.battle = null;
+        
+        return { success: true, message: "Battle concluded. Defeated army has been removed." };
+    }
 }
 
 class GameState {
@@ -34,17 +57,13 @@ class GameState {
             [aggressor.id]: [],
             [defender.id]: []
         };
-        this.settlements = {
-            [aggressor.id]: [{ x: 10, y: 18 }], // Default settlement for aggressor
-            [defender.id]: [{ x: 10, y: 2 }]  // Default settlement for defender
-        };
-        this.map = new Collection(); // Key: "x,y", Value: army object
         this.resources = {
             [aggressor.id]: { bronze: 5, timber: 5, mounts: 5, food: 10 },
             [defender.id]: { bronze: 5, timber: 5, mounts: 5, food: 10 }
         };
         this.battle = null; // Will hold the Battle instance when one is active
-        this.battlefield = null; // Will be a 9x9 grid
+        this.treaty = null; // Will hold treaty negotiations
+        this.ceasefire = null; // Will hold ceasefire information
     }
 
     addArmy(playerId) {
@@ -55,114 +74,31 @@ class GameState {
                 { type: 'infantry', count: 5 },
                 { type: 'commander', count: 1 },
             ],
-            position: null, // x, y on the main map
         };
         this.armies[playerId].push(army);
         return army;
     }
 
-    placeArmy(playerId, armyId, x, y) {
-        const army = this.getArmy(playerId, armyId);
-        if (!army) return { success: false, message: "Army not found." };
-        if (army.position) return { success: false, message: "This army has already been placed." };
+    startBattle(aggressorArmyId, defenderArmyId) {
+        // Get the specified armies
+        const aggressorArmy = this.getArmy(this.aggressor.id, aggressorArmyId);
+        const defenderArmy = this.getArmy(this.defender.id, defenderArmyId);
 
-        const playerSettlements = this.settlements[playerId];
-        const isNearSettlement = playerSettlements.some(s => Math.abs(s.x - x) <= 1 && Math.abs(s.y - y) <= 1);
-
-        if (!isNearSettlement) {
-            return { success: false, message: "You must place armies on or adjacent to one of your settlements." };
+        if (!aggressorArmy) {
+            return { success: false, message: "Aggressor army not found." };
         }
 
-        const mapKey = `${x},${y}`;
-        if (this.map.has(mapKey)) {
-            // Allow up to 2 armies on the same tile
-            const armiesOnTile = this.map.get(mapKey);
-            if (armiesOnTile.length >= 2) {
-                return { success: false, message: "A tile cannot hold more than two armies." };
-            }
-            armiesOnTile.push(army);
-        } else {
-            this.map.set(mapKey, [army]);
-        }
-
-        army.position = { x, y };
-        return { success: true, message: `Army #${army.id} placed at (${x}, ${y}).` };
-    }
-
-    moveArmy(playerId, armyId, newX, newY) {
-        const army = this.getArmy(playerId, armyId);
-        if (!army) return { success: false, message: "Army not found." };
-        if (!army.position) return { success: false, message: "This army has not been placed on the map yet." };
-
-        const { x: oldX, y: oldY } = army.position;
-        const distance = Math.abs(oldX - newX) + Math.abs(oldY - newY); // Manhattan distance
-
-        if (distance === 0) return { success: false, message: "The army is already at that position." };
-        if (distance > 3) return { success: false, message: `You can only move up to 3 tiles. Distance to (${newX}, ${newY}) is ${distance} tiles.` };
-
-        // Check resource cost for moving outside expansion range
-        const playerSettlements = this.settlements[playerId];
-        const isInExpansionRange = playerSettlements.some(s => Math.abs(s.x - newX) <= 3 && Math.abs(s.y - newY) <= 3);
-
-        if (!isInExpansionRange) {
-            if (this.resources[playerId].food < 1) {
-                return { success: false, message: "You need at least 1 food to move an army outside your expansion range." };
-            }
-            this.resources[playerId].food -= 1;
-        }
-
-        // Update map
-        const oldMapKey = `${oldX},${oldY}`;
-        const armiesOnOldTile = this.map.get(oldMapKey).filter(a => a.id !== armyId || a.owner !== playerId); // A bit complex if IDs aren't unique across players
-        if (armiesOnOldTile.length > 0) {
-            this.map.set(oldMapKey, armiesOnOldTile);
-        } else {
-            this.map.delete(oldMapKey);
-        }
-
-        const newMapKey = `${newX},${newY}`;
-        if (this.map.has(newMapKey)) {
-            const armiesOnNewTile = this.map.get(newMapKey);
-            if (armiesOnNewTile.length >= 2) {
-                // Move failed, revert map change
-                if (this.map.has(oldMapKey)) this.map.get(oldMapKey).push(army);
-                else this.map.set(oldMapKey, [army]);
-                return { success: false, message: "A tile cannot hold more than two armies." };
-            }
-            armiesOnNewTile.push(army);
-        } else {
-            this.map.set(newMapKey, [army]);
-        }
-
-        army.position = { x: newX, y: newY };
-        let replyMessage = `Army #${army.id} moved from (${oldX}, ${oldY}) to (${newX}, ${newY}).`;
-        if (!isInExpansionRange) {
-            replyMessage += " 1 food was consumed.";
-        }
-        return { success: true, message: replyMessage };
-    }
-
-    startBattle(tileX, tileY) {
-        const mapKey = `${tileX},${tileY}`;
-        const armiesOnTile = this.map.get(mapKey);
-
-        if (!armiesOnTile || armiesOnTile.length < 2) {
-            return { success: false, message: "There are not enough armies on this tile to start a battle." };
-        }
-
-        const aggressorArmy = armiesOnTile.find(a => a.owner === this.aggressor.id);
-        const defenderArmy = armiesOnTile.find(a => a.owner === this.defender.id);
-
-        if (!aggressorArmy || !defenderArmy) {
-            return { success: false, message: "Both an aggressor and a defender army must be on the tile to start a battle." };
+        if (!defenderArmy) {
+            return { success: false, message: "Defender army not found." };
         }
 
         if (this.battle) {
             return { success: false, message: "A battle is already in progress in this war." };
         }
 
-        const allArmies = armiesOnTile.filter(a => a.owner === this.aggressor.id || a.owner === this.defender.id);
-        this.battle = new Battle(this.aggressor.id, this.defender.id, allArmies);
+        // Create battle with the specified armies
+        const battleArmies = [aggressorArmy, defenderArmy];
+        this.battle = new Battle(this.aggressor.id, this.defender.id, battleArmies);
 
         return { success: true, message: "Battle initiated! The placement phase begins.", battle: this.battle };
     }
@@ -306,9 +242,58 @@ class Battle {
             archer: { movement: 1, cardinalOnly: true, hp: 1, canAttack: false, range: 3 },
             commander: { movement: 1, hp: 1, canAttack: true, immuneTo: ['infantry', 'cavalry'] },
             cavalry: { movement: 3, hp: 1, canAttack: true },
-            chariot: { movement: 3, hp: 1, canAttack: true },
+            chariot: { movement: 3, hp: 1, canAttack: true, chargeBonus: true, canTrample: true },
         };
         return properties[unitType] || { movement: 0, hp: 1 };
+    }
+
+    chariotCharge(playerId, fromX, fromY, toX, toY) {
+        if (this.phase !== 'battle') return { success: false, message: "It is not the battle phase." };
+        if (this.currentPlayer !== playerId) return { success: false, message: "It's not your turn." };
+        
+        const chariot = this.board[fromY][fromX];
+        if (!chariot || chariot.type !== 'chariot' || chariot.owner !== playerId) {
+            return { success: false, message: "No chariot unit at the specified position." };
+        }
+        if (chariot.hasActed) return { success: false, message: "That chariot has already acted this turn." };
+        
+        // Check if path is clear for charge
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const distance = Math.abs(dx) + Math.abs(dy);
+        
+        if (distance > 3) return { success: false, message: "Chariot charge range is limited to 3 tiles." };
+        if (dx !== 0 && dy !== 0) return { success: false, message: "Chariot can only charge in straight lines." };
+        
+        // Check path for obstacles
+        const stepX = dx === 0 ? 0 : dx / Math.abs(dx);
+        const stepY = dy === 0 ? 0 : dy / Math.abs(dy);
+        
+        for (let i = 1; i < distance; i++) {
+            const checkX = fromX + stepX * i;
+            const checkY = fromY + stepY * i;
+            if (this.board[checkY][checkX]) {
+                return { success: false, message: "Path is blocked. Chariot cannot charge through other units." };
+            }
+        }
+        
+        const target = this.board[toY][toX];
+        if (!target || target.owner === playerId) {
+            return { success: false, message: "No valid enemy target at the charge destination." };
+        }
+        
+        // Chariot charge destroys most units instantly
+        const targetProps = this.getUnitProperties(target.type);
+        if (targetProps.immuneTo && targetProps.immuneTo.includes('chariot')) {
+            return { success: false, message: `${target.type} is immune to chariot charges!` };
+        }
+        
+        // Move chariot to target position and destroy target
+        this.board[toY][toX] = chariot;
+        this.board[fromY][fromX] = null;
+        chariot.hasActed = true;
+        
+        return { success: true, message: `Chariot charged from (${fromX},${fromY}) to (${toX},${toY}) and destroyed the enemy ${target.type}!` };
     }
 
     archerFire(playerId, fromX, fromY, toX, toY) {
@@ -406,6 +391,13 @@ class Battle {
             this.board[y][x] = null;
         }
 
+        // Check for win/lose conditions
+        const battleResult = this.checkBattleEnd();
+        if (battleResult.ended) {
+            this.phase = 'ended';
+            return { success: true, battleEnded: true, winner: battleResult.winner, message: battleResult.message };
+        }
+
         this.currentPlayer = (this.currentPlayer === this.aggressorId) ? this.defenderId : this.aggressorId;
         // Reset hasActed for the new player's units
         for (let y = 0; y < 9; y++) {
@@ -419,6 +411,231 @@ class Battle {
         return { success: true, message: `Turn ended. Attacks resolved. It is now the other player's turn.` };
     }
 
+    checkBattleEnd() {
+        // Check if any commander is dead
+        let aggressorCommander = null;
+        let defenderCommander = null;
+        let aggressorUnits = 0;
+        let defenderUnits = 0;
+
+        for (let y = 0; y < 9; y++) {
+            for (let x = 0; x < 9; x++) {
+                const unit = this.board[y][x];
+                if (!unit) continue;
+
+                if (unit.owner === this.aggressorId) {
+                    aggressorUnits++;
+                    if (unit.type === 'commander') {
+                        aggressorCommander = unit;
+                    }
+                } else if (unit.owner === this.defenderId) {
+                    defenderUnits++;
+                    if (unit.type === 'commander') {
+                        defenderCommander = unit;
+                    }
+                }
+            }
+        }
+
+        // Win condition 1: Commander death
+        if (!aggressorCommander) {
+            return { ended: true, winner: this.defenderId, message: "The aggressor's commander has fallen! The defender wins!" };
+        }
+        if (!defenderCommander) {
+            return { ended: true, winner: this.aggressorId, message: "The defender's commander has fallen! The aggressor wins!" };
+        }
+
+        // Win condition 2: All units eliminated
+        if (aggressorUnits === 0) {
+            return { ended: true, winner: this.defenderId, message: "All aggressor units have been eliminated! The defender wins!" };
+        }
+        if (defenderUnits === 0) {
+            return { ended: true, winner: this.aggressorId, message: "All defender units have been eliminated! The aggressor wins!" };
+        }
+
+        // Win condition 3: Only commanders left (stalemate -> defender wins)
+        if (aggressorUnits === 1 && defenderUnits === 1 && aggressorCommander && defenderCommander) {
+            return { ended: true, winner: this.defenderId, message: "Only commanders remain! The battle ends in a stalemate - the defender wins!" };
+        }
+
+        // Win condition 4: Check for movement stalemate (no units can move or attack)
+        if (this.checkStalemate()) {
+            return { ended: true, winner: this.defenderId, message: "The battle has reached a stalemate with no possible moves - the defender wins!" };
+        }
+
+        return { ended: false };
+    }
+
+    checkStalemate() {
+        // Check if any unit can move or attack
+        for (let y = 0; y < 9; y++) {
+            for (let x = 0; x < 9; x++) {
+                const unit = this.board[y][x];
+                if (!unit) continue;
+                
+                const props = this.getUnitProperties(unit.type);
+                
+                // Check if unit can move
+                for (let dy = -props.movement; dy <= props.movement; dy++) {
+                    for (let dx = -props.movement; dx <= props.movement; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (Math.abs(dx) + Math.abs(dy) > props.movement) continue;
+                        if (props.cardinalOnly && dx !== 0 && dy !== 0) continue;
+                        
+                        const newX = x + dx;
+                        const newY = y + dy;
+                        
+                        if (newX >= 0 && newX < 9 && newY >= 0 && newY < 9 && !this.board[newY][newX]) {
+                            return false; // Unit can move
+                        }
+                    }
+                }
+                
+                // Check if unit can attack
+                if (props.canAttack) {
+                    const directions = [
+                        { dx: 0, dy: -1, orientation: 'north' },
+                        { dx: 1, dy: 0, orientation: 'east' },
+                        { dx: 0, dy: 1, orientation: 'south' },
+                        { dx: -1, dy: 0, orientation: 'west' }
+                    ];
+                    
+                    for (const dir of directions) {
+                        const targetX = x + dir.dx;
+                        const targetY = y + dir.dy;
+                        
+                        if (targetX >= 0 && targetX < 9 && targetY >= 0 && targetY < 9) {
+                            const target = this.board[targetY][targetX];
+                            if (target && target.owner !== unit.owner) {
+                                return false; // Unit can attack
+                            }
+                        }
+                    }
+                }
+                
+                // Check if archer can fire
+                if (unit.type === 'archer') {
+                    for (let ty = 0; ty < 9; ty++) {
+                        for (let tx = 0; tx < 9; tx++) {
+                            const target = this.board[ty][tx];
+                            if (target && target.owner !== unit.owner) {
+                                const dx = Math.abs(x - tx);
+                                const dy = Math.abs(y - ty);
+                                if (dx + dy <= 3 && !(dx === 0 && dy === 0)) {
+                                    return false; // Archer can fire
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return true; // No unit can move or attack
+    }
+
+    getBattleStatus() {
+        if (this.phase === 'ended') return { phase: 'ended', message: 'Battle has concluded.' };
+        
+        let aggressorUnits = {};
+        let defenderUnits = {};
+        
+        for (let y = 0; y < 9; y++) {
+            for (let x = 0; x < 9; x++) {
+                const unit = this.board[y][x];
+                if (!unit) continue;
+                
+                const unitCollection = unit.owner === this.aggressorId ? aggressorUnits : defenderUnits;
+                unitCollection[unit.type] = (unitCollection[unit.type] || 0) + 1;
+            }
+        }
+        
+        return {
+            phase: this.phase,
+            currentPlayer: this.currentPlayer,
+            aggressorUnits,
+            defenderUnits,
+            totalAggressorUnits: Object.values(aggressorUnits).reduce((a, b) => a + b, 0),
+            totalDefenderUnits: Object.values(defenderUnits).reduce((a, b) => a + b, 0)
+        };
+    }
+
+    startRallyPhase() {
+        if (this.phase !== 'battle') return { success: false, message: "Rally phase can only be started from battle phase." };
+        
+        this.phase = 'rally';
+        this.currentPlayer = this.aggressorId;
+        
+        // Reset hasActed for all units
+        for (let y = 0; y < 9; y++) {
+            for (let x = 0; x < 9; x++) {
+                const unit = this.board[y][x];
+                if (unit) {
+                    unit.hasActed = false;
+                }
+            }
+        }
+        
+        return { success: true, message: "Rally phase has begun! Units can now recover from injuries and reposition." };
+    }
+
+    rallyUnit(playerId, x, y) {
+        if (this.phase !== 'rally') return { success: false, message: "It is not the rally phase." };
+        if (this.currentPlayer !== playerId) return { success: false, message: "It's not your turn." };
+        
+        const unit = this.board[y][x];
+        if (!unit) return { success: false, message: "There is no unit at the specified position." };
+        if (unit.owner !== playerId) return { success: false, message: "You do not own that unit." };
+        if (unit.hasActed) return { success: false, message: "That unit has already acted this turn." };
+        
+        if (unit.status === 'injured') {
+            unit.status = 'healthy';
+            unit.hasActed = true;
+            return { success: true, message: `${unit.type} at (${x},${y}) has recovered from injury!` };
+        } else {
+            return { success: false, message: "This unit is not injured and cannot rally." };
+        }
+    }
+
+    endRallyTurn(playerId) {
+        if (this.phase !== 'rally') return { success: false, message: "It is not the rally phase." };
+        if (this.currentPlayer !== playerId) return { success: false, message: "It's not your turn." };
+        
+        this.currentPlayer = (this.currentPlayer === this.aggressorId) ? this.defenderId : this.aggressorId;
+        
+        // Reset hasActed for the new player's units
+        for (let y = 0; y < 9; y++) {
+            for (let x = 0; x < 9; x++) {
+                const unit = this.board[y][x];
+                if (unit && unit.owner === this.currentPlayer) {
+                    unit.hasActed = false;
+                }
+            }
+        }
+        
+        return { success: true, message: "Rally turn ended. It is now the other player's turn to rally." };
+    }
+
+    endRallyPhase(playerId) {
+        if (this.phase !== 'rally') return { success: false, message: "It is not the rally phase." };
+        if (this.currentPlayer !== playerId) return { success: false, message: "It's not your turn." };
+        
+        this.phase = 'battle';
+        this.currentPlayer = this.aggressorId;
+        
+        // Reset hasActed for all units
+        for (let y = 0; y < 9; y++) {
+            for (let x = 0; x < 9; x++) {
+                const unit = this.board[y][x];
+                if (unit) {
+                    unit.hasActed = false;
+                }
+            }
+        }
+        
+        return { success: true, message: "Rally phase ended. Battle phase resumes!" };
+    }
+
     renderBoard() {
         const emptySquare = '⬛';
         const unitIcons = {
@@ -430,12 +647,28 @@ class Battle {
             chariot: '🏛️',
         };
 
+        const orientationArrows = {
+            north: '↑',
+            east: '→',
+            south: '↓',
+            west: '←'
+        };
+
         let boardString = '';
         for (let y = 0; y < 9; y++) {
             for (let x = 0; x < 9; x++) {
                 const unit = this.board[y][x];
                 if (unit) {
-                    boardString += unitIcons[unit.type] || '❓';
+                    let icon = unitIcons[unit.type] || '❓';
+                    // Add injury indicator
+                    if (unit.status === 'injured') {
+                        icon = '🩸'; // Blood drop for injured units
+                    }
+                    // Add orientation for commanders and shock troops
+                    if (unit.type === 'commander' || unit.type === 'shock') {
+                        icon += orientationArrows[unit.orientation] || '';
+                    }
+                    boardString += icon;
                 } else {
                     boardString += emptySquare;
                 }
@@ -444,6 +677,8 @@ class Battle {
         }
         return boardString;
     }
+
+    // ...existing code...
 }
 
 // Singleton instance
