@@ -1,2 +1,4 @@
 py-cord
 Pillow
+discord-py
+python-dotenv

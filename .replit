@@ -1,8 +1,5 @@
-modules = ["nodejs-20", "web"]
-run = "node index.js"
-
 [nix]
-channel = "stable-24_05"
+channel = "stable-23_05"
+python310Packages = [
 
-[deployment]
-run = ["sh", "-c", "node index.js"]
+]
