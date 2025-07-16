@@ -1,5 +1,7 @@
+
 from PIL import Image, ImageDraw, ImageFont
 from typing import List, Optional, Dict, Any
+from game.enums import UnitType, Orientation
 
 
 class BattlefieldRenderer:
@@ -11,14 +13,19 @@ class BattlefieldRenderer:
         self.height = 9 * tile_size
         self.image = Image.new('RGB', (self.width, self.height), 'white')
         self.draw = ImageDraw.Draw(self.image)
-        self.font = ImageFont.load_default()
+        # Use a larger font size for better emoji visibility
+        try:
+            self.font = ImageFont.truetype("seguiemj.ttf", self.tile_size // 2)
+        except Exception:
+            # Fallback to default font if truetype font is not available
+            self.font = ImageFont.load_default()
         self.unit_emojis = {
-            'infantry': '🛡️',
-            'commander': '👑',
-            'shock': '⚡',
-            'archer': '🏹',
-            'cavalry': '🐎',
-            'chariot': '🏛️',
+            UnitType.INFANTRY: '🛡️',
+            UnitType.COMMANDER: '👑',
+            UnitType.SHOCK: '⚡',
+            UnitType.ARCHER: '🏹',
+            UnitType.CAVALRY: '🐎',
+            UnitType.CHARIOT: '🏛️',
         }
 
     def draw_grid(self):
@@ -36,7 +43,8 @@ class BattlefieldRenderer:
         for y, row in enumerate(self.board):
             for x, unit in enumerate(row):
                 if unit:
-                    emoji = self.unit_emojis.get(unit['type'], '❓')
+                    unit_type = unit['type'] if isinstance(unit['type'], UnitType) else UnitType(unit['type'])
+                    emoji = self.unit_emojis.get(unit_type, '❓')
                     pos_x = x * self.tile_size + self.tile_size // 4
                     pos_y = y * self.tile_size + self.tile_size // 4
 
@@ -73,8 +81,8 @@ if __name__ == '__main__':
     mock_board: List[List[Optional[Dict[str, Any]]]] = [
         [None for _ in range(9)] for _ in range(9)
     ]
-    mock_board[0][0] = {"type": "infantry", "owner": 1}
-    mock_board[8][8] = {"type": "commander", "owner": 2}
+    mock_board[0][0] = {"type": UnitType.INFANTRY, "owner": 1}
+    mock_board[8][8] = {"type": UnitType.COMMANDER, "owner": 2}
 
     renderer = BattlefieldRenderer(mock_board)
     image_buffer = renderer.render_board()

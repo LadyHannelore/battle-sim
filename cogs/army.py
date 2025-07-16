@@ -53,8 +53,11 @@ class Army(discord.Cog):
         )
 
         for army in player_armies:
+            def unit_display_name(unit_type):
+                # If enum, get value, else use as is
+                return unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
             units_string = ', '.join(
-                f"{u['count']} {u['type']}" for u in army['units']
+                f"{u['count']} {unit_display_name(u['type'])}" for u in army['units']
             )
             embed.add_field(
                 name=f"Army #{army['id']} ⚔️",
@@ -86,11 +89,13 @@ class Army(discord.Cog):
             )
             return
 
+
+        from game.enums import UnitType
         mod_map = {
-            "3 Shock Units (1 Bronze)": "shock",
-            "3 Archer Units (1 Timber)": "archer",
-            "4 Cavalry Units (1 Mount)": "cavalry",
-            "2 Chariot Units (1 Mount)": "chariot"
+            "3 Shock Units (1 Bronze)": UnitType.SHOCK,
+            "3 Archer Units (1 Timber)": UnitType.ARCHER,
+            "4 Cavalry Units (1 Mount)": UnitType.CAVALRY,
+            "2 Chariot Units (1 Mount)": UnitType.CHARIOT
         }
 
         result = game.modify_army(

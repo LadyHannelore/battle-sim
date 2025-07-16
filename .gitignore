@@ -22,7 +22,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+service_account.json
 # Virtual environments
 venv/
 env/

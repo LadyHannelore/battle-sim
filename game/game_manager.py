@@ -1,10 +1,12 @@
+from game.enums import Phase, Orientation, UnitStatus, UnitType
+
 class Battle:
     def __init__(self, aggressor_id, defender_id, armies):
         self.aggressor_id = aggressor_id
         self.defender_id = defender_id
         self.armies = armies
         self.board = [[None for _ in range(9)] for _ in range(9)]
-        self.phase = 'placement'  # placement, battle, rally
+        self.phase = Phase.PLACEMENT
         self.current_player = aggressor_id
         self.placed_units = {aggressor_id: [], defender_id: []}
         self.total_unit_count = self.count_total_units()
@@ -14,7 +16,7 @@ class Battle:
         return sum(sum(unit['count'] for unit in army['units']) for army in self.armies)
 
     def place_unit(self, player_id, unit_type, x, y, orientation):
-        if self.phase != 'placement':
+        if self.phase != Phase.PLACEMENT:
             return {"success": False, "message": "It is not the placement phase."}
         if self.current_player != player_id:
             return {"success": False, "message": "It's not your turn to place units."}
@@ -42,11 +44,11 @@ class Battle:
 
         unit_source['count'] -= 1
         self.board[y][x] = {
-            "type": unit_type,
+            "type": UnitType(unit_type) if not isinstance(unit_type, UnitType) else unit_type,
             "owner": player_id,
-            "orientation": orientation or 'north',
+            "orientation": Orientation(orientation) if orientation else Orientation.NORTH,
             "has_acted": False,
-            "status": "healthy"
+            "status": UnitStatus.HEALTHY
         }
         self.placed_units[player_id].append({"type": unit_type, "x": x, "y": y})
         self.log.append({
@@ -59,25 +61,67 @@ class Battle:
             "message": f"Placed {unit_type} at ({x},{y}) facing {orientation or 'north'}."
         })
 
-        total_placed = len(self.placed_units[self.aggressor_id]) + len(self.placed_units[self.defender_id])
+        # Calculate units left for this player and total units left
+        from collections import Counter
+        # Player's units left by type
+        player_units_counter = Counter()
+        for army in self.armies:
+            if army['owner'] == player_id:
+                for unit in army['units']:
+                    player_units_counter[unit['type']] += unit['count']
+        # All units left by type
+        all_units_counter = Counter()
+        for army in self.armies:
+            for unit in army['units']:
+                all_units_counter[unit['type']] += unit['count']
+        # Placed units by type
+        placed_units_counter = Counter()
+        for pid, placed_list in self.placed_units.items():
+            for placed in placed_list:
+                placed_units_counter[placed['type']] += 1
+        # Remaining units to place by type
+        units_left_to_place = all_units_counter - placed_units_counter
+        # Format info
+        def fmt_counter(counter):
+            return ', '.join(f"{v} {k.value if hasattr(k, 'value') else k}" for k, v in counter.items() if v > 0) or "None"
+        total_placed = sum(placed_units_counter.values())
+        total_units_left = self.total_unit_count - total_placed
+
         if total_placed >= self.total_unit_count:
-            self.phase = 'battle'
+            self.phase = Phase.BATTLE
             self.current_player = self.aggressor_id
-            return {"success": True, "phase": 'battle', "message": f"Placed {unit_type} at ({x},{y}). All units have been placed! The battle phase begins. It is now the aggressor's turn."}
+            return {
+                "success": True,
+                "phase": Phase.BATTLE.value,
+                "message": (
+                    f"Placed {unit_type} at ({x},{y}).\n"
+                    f"All units have been placed! The battle phase begins. It is now the aggressor's turn."
+                )
+            }
 
         self.current_player = self.defender_id if self.current_player == self.aggressor_id else self.aggressor_id
-        return {"success": True, "phase": 'placement', "message": f"Placed {unit_type} at ({x},{y}). It is now the other player's turn to place a unit."}
+        return {
+            "success": True,
+            "phase": Phase.PLACEMENT.value,
+            "message": (
+                f"Placed {unit_type} at ({x},{y}).\n"
+                f"You have {sum(player_units_counter.values())} units left to place: {fmt_counter(player_units_counter)}.\n"
+                f"Total units left to place: {total_units_left} ({fmt_counter(units_left_to_place)}).\n"
+                f"It is now the other player's turn to place a unit."
+            )
+        }
 
     def get_unit_properties(self, unit_type):
         properties = {
-            'infantry': {"movement": 1, "hp": 1, "can_attack": True},
-            'shock': {"movement": 1, "hp": 1, "can_attack": True, "immune_to": ['infantry', 'cavalry', 'commander']},
-            'archer': {"movement": 1, "cardinal_only": True, "hp": 1, "can_attack": False, "range": 3},
-            'commander': {"movement": 1, "hp": 1, "can_attack": True, "immune_to": ['infantry', 'cavalry']},
-            'cavalry': {"movement": 3, "hp": 1, "can_attack": True},
-            'chariot': {"movement": 3, "hp": 1, "can_attack": True, "charge_bonus": True, "can_trample": True},
+            UnitType.INFANTRY: {"movement": 1, "hp": 1, "can_attack": True},
+            UnitType.SHOCK: {"movement": 1, "hp": 1, "can_attack": True, "immune_to": [UnitType.INFANTRY, UnitType.CAVALRY, UnitType.COMMANDER]},
+            UnitType.ARCHER: {"movement": 1, "cardinal_only": True, "hp": 1, "can_attack": False, "range": 3},
+            UnitType.COMMANDER: {"movement": 1, "hp": 1, "can_attack": True, "immune_to": [UnitType.INFANTRY, UnitType.CAVALRY]},
+            UnitType.CAVALRY: {"movement": 3, "hp": 1, "can_attack": True},
+            UnitType.CHARIOT: {"movement": 3, "hp": 1, "can_attack": True, "charge_bonus": True, "can_trample": True},
         }
-        return properties.get(unit_type, {"movement": 0, "hp": 1})
+        key = unit_type if isinstance(unit_type, UnitType) else UnitType(unit_type)
+        return properties.get(key, {"movement": 0, "hp": 1})
 
     def forfeit_battle(self, player_id):
         if self.phase == 'ended':
@@ -248,7 +292,7 @@ class GameState:
         self.aggressor = aggressor
         self.defender = defender
         self.turn = 1
-        self.phase = 'placement'  # placement, battle, rally
+        self.phase = Phase.PLACEMENT
         self.current_player = aggressor['id']
         self.armies = {
             aggressor['id']: [],
@@ -267,11 +311,16 @@ class GameState:
             "id": len(self.armies[player_id]) + 1,
             "owner": player_id,
             "units": [
-                {"type": 'infantry', "count": 5},
-                {"type": 'commander', "count": 1},
+                {"type": UnitType.INFANTRY, "count": 5},
+                {"type": UnitType.COMMANDER, "count": 1},
             ],
         }
         self.armies[player_id].append(army)
+        try:
+            from utils.sheets_sync import sync_army
+            sync_army(army)
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync army: {e}")
         return army
 
     def get_army(self, player_id, army_id):
@@ -284,14 +333,22 @@ class GameState:
         armies = self.armies.get(player_id)
         if not armies:
             return {"success": False, "message": 'No armies found for this player.'}
-        
         initial_len = len(armies)
         self.armies[player_id] = [a for a in armies if a['id'] != army_id]
-        
         if len(self.armies[player_id]) == initial_len:
             return {"success": False, "message": f"Army #{army_id} not found."}
-        
-        return {"success": True, "message": f"Army #{army_id} has been disbanded."}
+        # Detailed info: show remaining armies
+        remaining = self.armies[player_id]
+        if not remaining:
+            return {"success": True, "message": f"Army #{army_id} has been disbanded. You have no armies left."}
+        army_list = '\n'.join(f"Army #{a['id']}: " + ', '.join(f"{u['count']} {u['type']}" for u in a['units']) for a in remaining)
+        try:
+            from utils.sheets_sync import sync_army
+            for a in remaining:
+                sync_army(a)
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync armies after disband: {e}")
+        return {"success": True, "message": f"Army #{army_id} has been disbanded.\nYour remaining armies:\n{army_list}"}
 
     def modify_army(self, player_id, army_id, modification):
         army = self.get_army(player_id, army_id)
@@ -331,27 +388,63 @@ class GameState:
             else:
                 army['units'].append(new_unit)
 
+        try:
+            from utils.sheets_sync import sync_army
+            sync_army(army)
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync army: {e}")
+
+        # Detailed info: show new army composition and resources
         unit_descriptions = []
         for u in new_units:
             unit_descriptions.append(f"{u['count']} {u['type']}")
         units_text = ', '.join(unit_descriptions)
-        return {"success": True, "message": f"Army #{army_id} successfully modified with {units_text}."}
+        army_comp = ', '.join(f"{u['count']} {u['type']}" for u in army['units'])
+        resources_text = ', '.join(f"{k}: {v}" for k, v in player_resources.items())
+        return {
+            "success": True,
+            "message": (
+                f"Army #{army_id} successfully modified with {units_text}.\n"
+                f"New composition: {army_comp}.\n"
+                f"Your resources: {resources_text}."
+            )
+        }
 
     def start_battle(self, aggressor_army_id, defender_army_id):
         aggressor_army = self.get_army(self.aggressor['id'], aggressor_army_id)
         defender_army = self.get_army(self.defender['id'], defender_army_id)
-
         if not aggressor_army:
             return {"success": False, "message": "Aggressor army not found."}
         if not defender_army:
             return {"success": False, "message": "Defender army not found."}
         if self.battle:
             return {"success": False, "message": "A battle is already in progress in this war."}
-
         battle_armies = [aggressor_army, defender_army]
         self.battle = Battle(self.aggressor['id'], self.defender['id'], battle_armies)
-
-        return {"success": True, "message": "Battle initiated! The placement phase begins.", "battle": self.battle}
+        # Detailed info: show both armies' compositions
+        def army_comp(army):
+            return ', '.join(f"{u['count']} {u['type']}" for u in army['units'])
+        try:
+            from utils.sheets_sync import sync_battle
+            sync_battle({
+                "id": f"{self.aggressor['id']}_{aggressor_army_id}_vs_{self.defender['id']}_{defender_army_id}",
+                "aggressor": self.aggressor['id'],
+                "defender": self.defender['id'],
+                "winner": None,
+                "armies": battle_armies,
+                "log": []
+            })
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync battle: {e}")
+        return {
+            "success": True,
+            "message": (
+                "Battle initiated! The placement phase begins.\n"
+                f"Aggressor Army: {army_comp(aggressor_army)}\n"
+                f"Defender Army: {army_comp(defender_army)}"
+            ),
+            "battle": self.battle
+        }
 
 
 class GameManager:
@@ -389,9 +482,23 @@ class GameManager:
         battle_army_ids = [army['id'] for army in battle.armies if army['owner'] == loser_id]
         
         game.armies[loser_id] = [army for army in loser_armies if army['id'] not in battle_army_ids]
-        
+
+        # Sync battle result to Google Sheets
+        try:
+            from utils.sheets_sync import sync_battle
+            sync_battle({
+                "id": f"{game.aggressor['id']}_{battle.armies[0]['id']}_vs_{game.defender['id']}_{battle.armies[1]['id']}",
+                "aggressor": game.aggressor['id'],
+                "defender": game.defender['id'],
+                "winner": battle.winner if hasattr(battle, 'winner') else None,
+                "armies": battle.armies,
+                "log": getattr(battle, 'log', [])
+            })
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync battle result: {e}")
+
         game.battle = None
-        
+
         return {"success": True, "message": "Battle concluded. Defeated army has been removed."}
 
 
