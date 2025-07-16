@@ -16,9 +16,21 @@ gc = gspread.authorize(creds)
 def get_worksheet(name):
     sh = gc.open_by_key(SPREADSHEET_ID)
     try:
-        return sh.worksheet(name)
+        ws = sh.worksheet(name)
     except gspread.WorksheetNotFound:
-        return sh.add_worksheet(title=name, rows=100, cols=20)
+        ws = sh.add_worksheet(title=name, rows=100, cols=20)
+    # Ensure header row exists for known sheets
+    if name == "Armies":
+        headers = ["ArmyID", "OwnerID", "Units"]
+        values = ws.get_all_values()
+        if not values or values[0] != headers:
+            ws.insert_row(headers, 1)
+    elif name == "Battles":
+        headers = ["BattleID", "Aggressor", "Defender", "Winner", "Armies", "Log"]
+        values = ws.get_all_values()
+        if not values or values[0] != headers:
+            ws.insert_row(headers, 1)
+    return ws
 
 # Sync an army to the sheet
 # army_dict: {id, owner, units: [{type, count}, ...]}
@@ -28,13 +40,14 @@ def sync_army(army_dict):
     all_records = ws.get_all_records()
     row_idx = None
     for idx, rec in enumerate(all_records, start=2):
-        if rec.get("ArmyID") == army_dict["id"] and rec.get("OwnerID") == army_dict["owner"]:
+        if str(rec.get("ArmyID")) == str(army_dict["id"]) and str(rec.get("OwnerID")) == str(army_dict["owner"]):
             row_idx = idx
             break
     units_str = ", ".join(f"{u['count']} {u['type']}" for u in army_dict["units"])
     row = [army_dict["id"], army_dict["owner"], units_str]
     if row_idx:
-        ws.update(f"A{row_idx}:C{row_idx}", [row])
+        # Update the entire row starting at column A
+        ws.update(f"A{row_idx}", [row])  # type: ignore
     else:
         ws.append_row(row)
 
