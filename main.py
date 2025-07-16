@@ -42,4 +42,36 @@ async def sync(ctx):
         await ctx.send(f"Error syncing commands: {e}")
 
 
+@bot.command()
+@commands.is_owner()
+async def clear_commands(ctx):
+    """Clears all slash commands from Discord."""
+    try:
+        # Clear all global slash commands
+        bot.pending_application_commands.clear()
+        await bot.sync_commands()
+        await ctx.send(
+            "All slash commands cleared! "
+            "Use `!sync` to register current commands."
+        )
+    except Exception as e:
+        await ctx.send(f"Error clearing commands: {e}")
+
+
+@bot.command()
+@commands.is_owner()
+async def force_sync(ctx):
+    """Clears old commands and syncs current ones."""
+    try:
+        # Clear pending commands and sync
+        bot.pending_application_commands.clear()
+        await bot.sync_commands()
+        await ctx.send(
+            "Force sync completed! "
+            "This should clear old commands and register new ones."
+        )
+    except Exception as e:
+        await ctx.send(f"Error during force sync: {e}")
+
+
 bot.run(os.getenv('TOKEN'))

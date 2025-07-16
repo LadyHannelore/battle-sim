@@ -14,7 +14,7 @@ class Army(discord.Cog):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
             await ctx.respond(
-                'This command can only be used inside a war ticket.',
+                'This command can only be used inside a battle thread.',
                 ephemeral=True
             )
             return
@@ -35,7 +35,7 @@ class Army(discord.Cog):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
             await ctx.respond(
-                'This command can only be used inside a war ticket.',
+                'This command can only be used inside a battle thread.',
                 ephemeral=True
             )
             return
@@ -81,7 +81,7 @@ class Army(discord.Cog):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
             await ctx.respond(
-                'This command can only be used inside a war ticket.',
+                'This command can only be used inside a battle thread.',
                 ephemeral=True
             )
             return
@@ -111,7 +111,7 @@ class Army(discord.Cog):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
             await ctx.respond(
-                'This command can only be used inside a war ticket.',
+                'This command can only be used inside a battle thread.',
                 ephemeral=True
             )
             return

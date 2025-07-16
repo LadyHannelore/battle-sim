@@ -11,6 +11,73 @@ class Battle(discord.Cog):
 
     battle = SlashCommandGroup("battle", "Initiate or manage a battle.")
 
+    @battle.command(description="Create a new battle thread.")
+    async def create_thread(
+        self,
+        ctx: discord.ApplicationContext,
+        opponent: discord.Member,
+        thread_name: Optional[str] = None
+    ):
+        if ctx.author.id == opponent.id:
+            return await ctx.respond(
+                "You cannot start a battle with yourself!",
+                ephemeral=True
+            )
+
+        if not thread_name:
+            thread_name = (
+                f"Battle: {ctx.author.display_name} vs "
+                f"{opponent.display_name}"
+            )
+
+        # Create the thread
+        thread = await ctx.channel.create_thread(
+            name=thread_name,
+            type=discord.ChannelType.public_thread
+        )
+
+        # Add both players to the thread
+        await thread.add_user(ctx.author)
+        await thread.add_user(opponent)
+
+        # Create the game instance
+        aggressor = {'id': ctx.author.id, 'name': ctx.author.display_name}
+        defender = {'id': opponent.id, 'name': opponent.display_name}
+        game = game_manager.create_game(thread.id, aggressor, defender)
+
+        if not game:
+            await thread.delete()
+            return await ctx.respond(
+                "Failed to create battle thread. A game might already exist.",
+                ephemeral=True
+            )
+
+        # Create initial armies for both players
+        game.add_army(ctx.author.id)
+        game.add_army(opponent.id)
+
+        embed = discord.Embed(
+            title="⚔️ Battle Thread Created!",
+            description=(
+                f"**{ctx.author.display_name}** challenges "
+                f"**{opponent.display_name}** to battle!\n\n"
+                f"**Initial Setup:**\n"
+                f"• Both players have been given Army #1\n"
+                f"• Each army starts with: 5 infantry, 1 commander\n\n"
+                f"**Next Steps:**\n"
+                f"• Use `/army view` to see your armies\n"
+                f"• Use `/army modify` to customize your armies\n"
+                f"• Use `/battle start` to begin the battle"
+            ),
+            color=discord.Color.red()
+        )
+
+        await ctx.respond(
+            f"Battle thread created: {thread.mention}",
+            ephemeral=True
+        )
+        await thread.send(embed=embed)
+
     @battle.command(description="Start a battle between your armies.")
     async def start(
         self,
@@ -21,7 +88,7 @@ class Battle(discord.Cog):
         game = game_manager.get_game(ctx.channel_id)
         if not game:
             return await ctx.respond(
-                "This command can only be used inside a war ticket.",
+                "This command can only be used inside a battle thread.",
                 ephemeral=True
             )
 

@@ -5,10 +5,11 @@ A Discord bot that provides a tactical battle simulation game with army manageme
 ## Features
 
 - **Army Management**: Create, view, modify, and disband armies
-- **Battle System**: Engage in tactical battles with unit placement and actions
+- **Battle Thread System**: Create dedicated Discord threads for battles
+- **Tactical Combat**: Engage in turn-based battles with unit placement and actions
 - **Battlefield Visualization**: Generate visual representations of battles using rendered images
 - **Unit Types**: Multiple unit types including infantry, commanders, shock troops, archers, cavalry, and chariots
-- **Strategic Gameplay**: Maneuver units, form treaties, and engage in warfare
+- **Strategic Gameplay**: Place units strategically and engage in tactical warfare
 
 ## Setup
 
@@ -41,6 +42,13 @@ DISCORD_TOKEN=your_discord_bot_token_here
 python main.py
 ```
 
+5. Clear old commands and sync new ones (run this in Discord as the bot owner):
+```
+!force_sync
+```
+
+This will remove any old slash commands that might still be cached by Discord and register only the current commands.
+
 ## Dependencies
 
 - `py-cord` - Discord API wrapper
@@ -49,26 +57,20 @@ python main.py
 
 ## Commands
 
+### Battle Commands (`/battle`)
+
+- **create_thread** - Create a new battle thread with an opponent
+- **start** - Start a new battle
+- **place** - Place units on the battlefield
+- **action** - Perform actions during battle
+- **forfeit** - Forfeit the current battle
+
 ### Army Commands (`/army`)
 
 - **create** - Create a new army
 - **view** - View your current army
 - **modify** - Modify your army composition
 - **disband** - Disband your current army
-
-### Battle Commands (`/battle`)
-
-- **start** - Start a new battle
-- **place** - Place units on the battlefield
-- **action** - Perform actions during battle
-- **forfeit** - Forfeit the current battle
-
-### Other Commands
-
-- **ping** - Check bot responsiveness
-- **maneuver** - Execute tactical maneuvers
-- **treaty** - Manage diplomatic relations
-- **war** - Declare war or manage conflicts
 
 ## Game Mechanics
 
@@ -83,11 +85,12 @@ python main.py
 
 ### Battle System
 
-1. **Army Creation**: Players create armies with different unit compositions
-2. **Battle Initiation**: Players can start battles against each other
-3. **Unit Placement**: Strategic placement of units on a 9x9 grid
-4. **Combat Resolution**: Turn-based combat with tactical decisions
-5. **Victory Conditions**: Defeat enemy commander or eliminate all units
+1. **Battle Thread Creation**: Use `/battle create_thread` to create a dedicated thread for your battle
+2. **Army Creation**: Both players automatically get starting armies, or create custom ones
+3. **Battle Initiation**: Use `/battle start` to begin the tactical battle
+4. **Unit Placement**: Strategic placement of units on a 9x9 grid
+5. **Combat Resolution**: Turn-based combat with tactical decisions
+6. **Victory Conditions**: Defeat enemy commander or eliminate all units
 
 ### Battlefield Visualization
 
@@ -106,11 +109,7 @@ battle-sim/
 ├── .env                   # Environment variables (create this)
 ├── cogs/                  # Discord command modules
 │   ├── army.py           # Army management commands
-│   ├── battle.py         # Battle system commands
-│   ├── maneuver.py       # Tactical maneuver commands
-│   ├── ping.py           # Utility commands
-│   ├── treaty.py         # Diplomatic commands
-│   └── war.py            # War management commands
+│   └── battle.py         # Battle system commands
 ├── game/                  # Game logic modules
 │   └── game_manager.py   # Core game mechanics
 └── utils/                 # Utility modules
@@ -135,6 +134,20 @@ python utils/battlefield_renderer.py
 ```
 
 This will generate a test image showing the battlefield visualization.
+
+## Troubleshooting
+
+### Old Commands Still Appear
+If you see old slash commands when typing `/` that are no longer in the code:
+
+1. Use `!force_sync` in Discord (as bot owner) to clear old commands
+2. If that doesn't work, use `!clear_commands` then `!sync`
+3. Discord can take up to 1 hour to update slash commands globally
+
+### Bot Commands
+- `!sync` - Sync current slash commands with Discord
+- `!clear_commands` - Clear all slash commands from Discord
+- `!force_sync` - Clear old commands and sync new ones
 
 ## Contributing
 
