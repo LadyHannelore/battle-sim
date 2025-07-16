@@ -1,7 +1,11 @@
-const { createCanvas, loadImage } = require('canvas');
 
-// Unicode emoji to PNG fallback (for better rendering)
-const emojiMap = {
+const { createCanvas } = require('canvas');
+
+/**
+ * Unicode emoji for each unit type (for rendering on the battlefield image)
+ * @type {Record<string, string>}
+ */
+const EMOJI_MAP = {
     infantry: '🛡️',
     commander: '👑',
     shock: '⚡',
@@ -10,18 +14,30 @@ const emojiMap = {
     chariot: '🏛️',
     injured: '🩸',
 };
-const orientationArrows = {
+
+/**
+ * Arrow symbols for unit orientation
+ * @type {Record<string, string>}
+ */
+const ORIENTATION_ARROWS = {
     north: '↑',
     east: '→',
     south: '↓',
     west: '←',
 };
 
-
+/**
+ * Generate a PNG buffer of the battlefield, including player names and unit icons.
+ * @param {Array<Array<Object|null>>} board - 2D array representing the battlefield grid.
+ * @param {{aggressor?: string, defender?: string}} [playerNames={}] - Player names to display.
+ * @returns {Promise<Buffer>} PNG image buffer
+ */
 async function generateBattlefieldImage(board, playerNames = {}) {
-    const cellSize = 48;
-    const width = 9 * cellSize;
-    const height = 9 * cellSize + 40; // Extra space for names
+    const CELL_SIZE = 48;
+    const GRID_SIZE = 9;
+    const NAME_BANNER_HEIGHT = 40;
+    const width = GRID_SIZE * CELL_SIZE;
+    const height = GRID_SIZE * CELL_SIZE + NAME_BANNER_HEIGHT;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
@@ -29,7 +45,7 @@ async function generateBattlefieldImage(board, playerNames = {}) {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, width, height);
 
-    // Draw player names
+    // Draw player names (top: aggressor, bottom: defender)
     ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -38,16 +54,18 @@ async function generateBattlefieldImage(board, playerNames = {}) {
     ctx.fillStyle = '#87CEEB';
     ctx.fillText(playerNames.defender || 'Defender', width / 2, height - 32);
 
-    // Draw grid
+    // Draw grid lines
     ctx.strokeStyle = '#555';
-    for (let i = 0; i <= 9; i++) {
+    for (let i = 0; i <= GRID_SIZE; i++) {
+        // Vertical lines
         ctx.beginPath();
-        ctx.moveTo(i * cellSize, 40);
-        ctx.lineTo(i * cellSize, height - 40);
+        ctx.moveTo(i * CELL_SIZE, NAME_BANNER_HEIGHT);
+        ctx.lineTo(i * CELL_SIZE, height - NAME_BANNER_HEIGHT);
         ctx.stroke();
+        // Horizontal lines
         ctx.beginPath();
-        ctx.moveTo(0, 40 + i * cellSize / 9 * 9);
-        ctx.lineTo(width, 40 + i * cellSize / 9 * 9);
+        ctx.moveTo(0, NAME_BANNER_HEIGHT + i * CELL_SIZE);
+        ctx.lineTo(width, NAME_BANNER_HEIGHT + i * CELL_SIZE);
         ctx.stroke();
     }
 
@@ -55,18 +73,21 @@ async function generateBattlefieldImage(board, playerNames = {}) {
     ctx.font = '32px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    for (let y = 0; y < 9; y++) {
-        for (let x = 0; x < 9; x++) {
+    for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
             const unit = board[y][x];
             if (unit) {
-                let icon = emojiMap[unit.type] || '❓';
-                if (unit.status === 'injured') icon = emojiMap.injured;
+                let icon = EMOJI_MAP[unit.type] || '❓';
+                if (unit.status === 'injured') icon = EMOJI_MAP.injured;
                 let display = icon;
                 if (unit.type === 'commander' || unit.type === 'shock') {
-                    display += orientationArrows[unit.orientation] || '';
+                    display += ORIENTATION_ARROWS[unit.orientation] || '';
                 }
-                ctx.fillText(display, x * cellSize + cellSize / 2, y * cellSize + cellSize / 2 + 40);
+                ctx.fillText(
+                    display,
+                    x * CELL_SIZE + CELL_SIZE / 2,
+                    y * CELL_SIZE + CELL_SIZE / 2 + NAME_BANNER_HEIGHT
+                );
             }
         }
     }

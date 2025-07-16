@@ -510,7 +510,6 @@ class Battle {
         return this.log;
     }
     checkBattleEnd() {
-    checkBattleEnd() {
         // Check if any commander is dead
         let aggressorCommander = null;
         let defenderCommander = null;
