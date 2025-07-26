@@ -12,6 +12,17 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Slash command syncing
+@bot.tree.command(name="sync", description="Syncs slash commands with Discord.")
+@commands.is_owner()
+async def slash_sync(interaction: discord.Interaction):  # type: ignore
+    """Syncs slash commands with Discord via slash command."""
+    try:
+        await bot.tree.sync()
+        await interaction.response.send_message("Slash commands synced successfully!", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"Error syncing commands: {e}", ephemeral=True)
+
 
 @bot.event
 async def on_ready():
@@ -25,7 +36,7 @@ async def on_ready():
 for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):
         try:
-            bot.load_extension(f'cogs.{filename[:-3]}')
+            bot.load_extension(f'cogs.{filename[:-3]}')  # type: ignore[reportUnusedCoroutine]
             print(f'Loaded cog: {filename}')
         except Exception as e:
             print(f'Failed to load cog {filename}: {e}')
@@ -36,7 +47,8 @@ for filename in os.listdir('./cogs'):
 async def sync(ctx):
     """Syncs slash commands with Discord."""
     try:
-        await bot.sync_commands()
+        # sync slash commands via app_commands
+        await bot.tree.sync()
         await ctx.send("Commands synced successfully!")
     except Exception as e:
         await ctx.send(f"Error syncing commands: {e}")
@@ -48,8 +60,8 @@ async def clear_commands(ctx):
     """Clears all slash commands from Discord."""
     try:
         # Clear all global slash commands
-        bot.pending_application_commands.clear()
-        await bot.sync_commands()
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
         await ctx.send(
             "All slash commands cleared! "
             "Use `!sync` to register current commands."
@@ -63,9 +75,9 @@ async def clear_commands(ctx):
 async def force_sync(ctx):
     """Clears old commands and syncs current ones."""
     try:
-        # Clear pending commands and sync
-        bot.pending_application_commands.clear()
-        await bot.sync_commands()
+        # Clear all commands and resync
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
         await ctx.send(
             "Force sync completed! "
             "This should clear old commands and register new ones."
