@@ -1,11 +1,12 @@
 import discord
-from discord.commands import SlashCommandGroup
+from discord.commands import SlashCommandGroup, ApplicationContext
+from discord.ext import commands
 from game.game_manager import game_manager
 from utils.battlefield_renderer import BattlefieldRenderer
 from typing import Optional
 
 
-class Battle(discord.Cog):
+class Battle(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -14,7 +15,7 @@ class Battle(discord.Cog):
     @battle.command(description="Create a new battle thread.")
     async def create_thread(
         self,
-        ctx: discord.ApplicationContext,
+        ctx: ApplicationContext,
         opponent: discord.Member,
         thread_name: Optional[str] = None
     ):
@@ -31,9 +32,9 @@ class Battle(discord.Cog):
             )
 
         # Create the thread
-        thread = await ctx.channel.create_thread(
+        thread = await ctx.channel.create_thread(  # type: ignore[reportCallIssue]
             name=thread_name,
-            type=discord.ChannelType.public_thread
+            type=discord.ChannelType.public_thread  # type: ignore[reportCallIssue]
         )
 
         # Add both players to the thread
@@ -87,7 +88,7 @@ class Battle(discord.Cog):
     @battle.command(description="Start a battle between your armies.")
     async def start(
         self,
-        ctx: discord.ApplicationContext,
+        ctx: ApplicationContext,
         aggressor_army: int,
         defender_army: int
     ):
@@ -129,7 +130,7 @@ class Battle(discord.Cog):
     @battle.command(description="Place a unit on the battlefield.")
     async def place(
         self,
-        ctx: discord.ApplicationContext,
+        ctx: ApplicationContext,
         unit_type: str,
         x: int,
         y: int,
@@ -165,7 +166,7 @@ class Battle(discord.Cog):
     @battle.command(description="Perform a battle action.")
     async def action(
         self,
-        ctx: discord.ApplicationContext,
+        ctx: ApplicationContext,
         action_type: str,
         from_x: Optional[int] = None,
         from_y: Optional[int] = None,
@@ -233,7 +234,7 @@ class Battle(discord.Cog):
         )
 
     @battle.command(description="Forfeit the current battle.")
-    async def forfeit(self, ctx: discord.ApplicationContext):
+    async def forfeit(self, ctx: ApplicationContext):
         game = game_manager.get_game(ctx.channel_id)
         if not game or not game.battle:
             return await ctx.respond(
@@ -246,6 +247,11 @@ class Battle(discord.Cog):
             return await ctx.respond(result['message'], ephemeral=True)
 
         game_manager.end_battle(ctx.channel_id)
+        # lock the thread to prevent further messages
+        try:
+            await ctx.channel.edit(locked=True)  # type: ignore
+        except Exception:
+            pass
         await ctx.respond(result['message'])
 
 
