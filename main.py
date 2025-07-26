@@ -10,15 +10,15 @@ intents.messages = True
 intents.guilds = True
 intents.message_content = True
 
-# Subclass Bot to load extensions asynchronously
+# Subclass Bot to load extensions asynchronously  
 class BattleBot(commands.Bot):
     async def setup_hook(self):
-        # Load cogs
+        # Load cogs - in py-cord load_extension is synchronous
         cog_files = os.listdir('./cogs')
         for filename in cog_files:
             if filename.endswith('.py'):
                 try:
-                    await self.load_extension(f'cogs.{filename[:-3]}')
+                    self.load_extension(f'cogs.{filename[:-3]}')
                     print(f'Loaded cog: {filename}')
                 except Exception as e:
                     print(f'Failed to load cog {filename}: {e}')
