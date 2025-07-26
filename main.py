@@ -14,7 +14,8 @@ intents.message_content = True
 class BattleBot(commands.Bot):
     async def setup_hook(self):
         # Load cogs
-        for filename in os.listdir('./cogs'):
+        cog_files = os.listdir('./cogs')
+        for filename in cog_files:
             if filename.endswith('.py'):
                 try:
                     await self.load_extension(f'cogs.{filename[:-3]}')
@@ -23,17 +24,6 @@ class BattleBot(commands.Bot):
                     print(f'Failed to load cog {filename}: {e}')
 
 bot = BattleBot(command_prefix="!", intents=intents)
-
-# Slash command syncing
-@bot.tree.command(name="sync", description="Syncs slash commands with Discord.")
-@commands.is_owner()
-async def slash_sync(interaction: discord.Interaction):  # type: ignore
-    """Syncs slash commands with Discord via slash command."""
-    try:
-        await bot.tree.sync()
-        await interaction.response.send_message("Slash commands synced successfully!", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"Error syncing commands: {e}", ephemeral=True)
 
 
 @bot.event
@@ -51,8 +41,8 @@ async def on_ready():
 async def sync(ctx):
     """Syncs slash commands with Discord."""
     try:
-        # sync slash commands via app_commands
-        await bot.tree.sync()
+        # sync slash commands via py-cord
+        await bot.sync_commands()
         await ctx.send("Commands synced successfully!")
     except Exception as e:
         await ctx.send(f"Error syncing commands: {e}")
@@ -63,9 +53,8 @@ async def sync(ctx):
 async def clear_commands(ctx):
     """Clears all slash commands from Discord."""
     try:
-        # Clear all global slash commands
-        bot.tree.clear_commands(guild=None)
-        await bot.tree.sync()
+        # Clear all global slash commands (py-cord method)
+        await bot.sync_commands(delete_existing=True)
         await ctx.send(
             "All slash commands cleared! "
             "Use `!sync` to register current commands."
@@ -79,9 +68,8 @@ async def clear_commands(ctx):
 async def force_sync(ctx):
     """Clears old commands and syncs current ones."""
     try:
-        # Clear all commands and resync
-        bot.tree.clear_commands(guild=None)
-        await bot.tree.sync()
+        # Clear all commands and resync (py-cord method)
+        await bot.sync_commands(delete_existing=True)
         await ctx.send(
             "Force sync completed! "
             "This should clear old commands and register new ones."

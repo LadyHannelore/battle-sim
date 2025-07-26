@@ -1,7 +1,6 @@
 py-cord
 Pillow
 python-dotenv
-discord-py
 pytest
 gspread
 google-auth
