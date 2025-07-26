@@ -124,7 +124,7 @@ class Battle:
         return properties.get(key, {"movement": 0, "hp": 1})
 
     def forfeit_battle(self, player_id):
-        if self.phase == 'ended':
+        if self.phase == Phase.ENDED:
             return {"success": False, "message": 'The battle has already ended.'}
         
         winner, loser = (None, None)
@@ -135,7 +135,9 @@ class Battle:
         else:
             return {"success": False, "message": 'You are not a participant in this battle.'}
         
-        self.phase = 'ended'
+        self.phase = Phase.ENDED
+        # record winner for later reference
+        self.winner = winner
         self.log.append({
             "type": 'forfeit',
             "player_id": player_id,
@@ -144,7 +146,7 @@ class Battle:
         return {"success": True, "battle_ended": True, "winner": winner, "message": f"<@{player_id}> forfeited. <@{winner}> wins the battle!"}
 
     def move_unit(self, player_id, from_x, from_y, to_x, to_y):
-        if self.phase != 'battle':
+        if self.phase != Phase.BATTLE:
             return {"success": False, "message": "It is not the battle phase."}
         if self.current_player != player_id:
             return {"success": False, "message": "It's not your turn."}
@@ -181,7 +183,7 @@ class Battle:
         return {"success": True, "message": f"Moved {unit['type']} from ({from_x},{from_y}) to ({to_x},{to_y})."}
 
     def end_turn(self, player_id):
-        if self.phase != 'battle':
+        if self.phase != Phase.BATTLE:
             return {"success": False, "message": "It is not the battle phase."}
         if self.current_player != player_id:
             return {"success": False, "message": "It's not your turn."}
@@ -194,13 +196,13 @@ class Battle:
                     continue
                 
                 tx, ty = x, y
-                if unit['orientation'] == 'north':
+                if unit['orientation'] == Orientation.NORTH:
                     ty -= 1
-                elif unit['orientation'] == 'south':
+                elif unit['orientation'] == Orientation.SOUTH:
                     ty += 1
-                elif unit['orientation'] == 'east':
+                elif unit['orientation'] == Orientation.EAST:
                     tx += 1
-                elif unit['orientation'] == 'west':
+                elif unit['orientation'] == Orientation.WEST:
                     tx -= 1
 
                 if not (0 <= tx <= 8 and 0 <= ty <= 8):
@@ -212,10 +214,10 @@ class Battle:
 
                 props = self.get_unit_properties(target['type'])
                 if 'immune_to' in props and unit['type'] in props['immune_to']:
-                    if target.get('status') == 'injured':
+                    if target.get('status') == UnitStatus.DAMAGED:
                         to_remove.append((tx, ty))
                     else:
-                        target['status'] = 'injured'
+                        target['status'] = UnitStatus.DAMAGED
                 else:
                     to_remove.append((tx, ty))
 
@@ -230,7 +232,7 @@ class Battle:
 
         battle_result = self.check_battle_end()
         if battle_result['ended']:
-            self.phase = 'ended'
+            self.phase = Phase.ENDED
             self.log.append({
                 "type": 'end',
                 "winner": battle_result['winner'],
@@ -266,11 +268,11 @@ class Battle:
 
                 if unit['owner'] == self.aggressor_id:
                     aggressor_units += 1
-                    if unit['type'] == 'commander':
+                    if unit['type'] == UnitType.COMMANDER:
                         aggressor_commander = unit
                 elif unit['owner'] == self.defender_id:
                     defender_units += 1
-                    if unit['type'] == 'commander':
+                    if unit['type'] == UnitType.COMMANDER:
                         defender_commander = unit
 
         if not aggressor_commander:
@@ -473,7 +475,7 @@ class GameManager:
             return {"success": False, "message": "No active battle found."}
         
         battle = game.battle
-        if battle.phase != 'ended':
+        if battle.phase != Phase.ENDED:
             return {"success": False, "message": "Battle is not finished yet."}
         
         loser_id = game.defender['id'] if battle.winner == game.aggressor['id'] else game.aggressor['id']

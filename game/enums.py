@@ -18,7 +18,7 @@ class UnitStatus(Enum):
     DEAD = "dead"
 
 class UnitType(Enum):
-    INFANTRY = "SHOCK"
+    INFANTRY = "INFANTRY"
     SHOCK = "SHOCK"
     ARCHER = "ARCHER"
     COMMANDER = "COMMANDER"
