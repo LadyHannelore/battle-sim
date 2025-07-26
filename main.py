@@ -17,7 +17,7 @@ class BattleBot(commands.Bot):
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):
                 try:
-                    # await self.load_extension(f'cogs.{filename[:-3]}')  # moved to setup_hook
+                    await self.load_extension(f'cogs.{filename[:-3]}')
                     print(f'Loaded cog: {filename}')
                 except Exception as e:
                     print(f'Failed to load cog {filename}: {e}')
