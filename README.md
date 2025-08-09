@@ -79,16 +79,20 @@ This will remove any old slash commands that might still be cached by Discord an
 
 ## Game Mechanics
 
+### 📖 Complete Battle Tutorial
+
+**🗡️ [Read the Complete Battle System Tutorial](BATTLE_TUTORIAL.md)** for detailed gameplay instructions, strategies, and tactics!
+
 ### Unit Types
 
 - **Infantry** 🛡️ - Basic ground units
-- **Commander** 👑 - Leadership units
+- **Commander** 👑 - Leadership units  
 - **Shock** ⚡ - Fast attack units
 - **Archer** 🏹 - Ranged units
 - **Cavalry** 🐎 - Mounted units
 - **Chariot** 🏛️ - Heavy assault units
 
-### Battle System
+### Battle System Overview
 
 1. **Battle Thread Creation**: Use `/battle create_thread` to create a dedicated thread for your battle
 2. **Army Creation**: Both players automatically get starting armies, or create custom ones
@@ -96,6 +100,8 @@ This will remove any old slash commands that might still be cached by Discord an
 4. **Unit Placement**: Strategic placement of units on a 9x9 grid
 5. **Combat Resolution**: Turn-based combat with tactical decisions
 6. **Victory Conditions**: Defeat enemy commander or eliminate all units
+
+> 💡 **New to the battle system?** Check out the [Battle Tutorial](BATTLE_TUTORIAL.md) for step-by-step instructions and winning strategies!
 
 ### Battlefield Visualization
 
