@@ -8,7 +8,7 @@ class Army(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="create", description="Create a new army for 1 labor.")
+    @app_commands.command(name="army_create", description="Create a new army for 1 labor.")
     async def army_create(self, interaction: discord.Interaction):
         game = game_manager.get_game(interaction.channel_id)
         if not game:
@@ -26,10 +26,10 @@ class Army(commands.Cog):
             f"Starting units: 5 infantry, 1 commander\n\n"
             f"💡 **Next steps:**\n"
             f"• Use `/army_modify` to customize your army\n"
-            f"• Use `/army_start_battle` to fight with this army"
+            f"• Use `/battle_start` to fight with this army"
         )
 
-    @app_commands.command(name="view", description="View your current armies.")
+    @app_commands.command(name="army_view", description="View your current armies.")
     async def army_view(self, interaction: discord.Interaction):
         game = game_manager.get_game(interaction.channel_id)
         if not game:
@@ -73,7 +73,7 @@ class Army(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="modify", description="Purchase modifications for an army.")
+    @app_commands.command(name="army_modify", description="Purchase modifications for an army.")
     @app_commands.describe(
         army_id="The ID of the army to modify",
         modification="The type of modification to purchase"
@@ -107,7 +107,7 @@ class Army(commands.Cog):
         else:
             await interaction.response.send_message(result['message'], ephemeral=True)
 
-    @app_commands.command(name="disband", description="Disband (delete) one of your armies.")
+    @app_commands.command(name="army_disband", description="Disband (delete) one of your armies.")
     @app_commands.describe(army_id="The ID of the army to disband")
     async def army_disband(
         self,
@@ -127,7 +127,6 @@ class Army(commands.Cog):
             await interaction.response.send_message(f"🗑️ Army #{army_id} has been disbanded.")
         else:
             await interaction.response.send_message(result['message'], ephemeral=True)
-
 
 async def setup(bot):
     await bot.add_cog(Army(bot))

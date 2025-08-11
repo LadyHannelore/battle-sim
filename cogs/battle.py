@@ -10,7 +10,7 @@ class Battle(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="create_thread", description="Create a new battle thread.")
+    @app_commands.command(name="battle_create_thread", description="Create a new battle thread.")
     @app_commands.describe(
         opponent="The user you want to battle against",
         thread_name="Optional custom name for the battle thread"
@@ -87,7 +87,7 @@ class Battle(commands.Cog):
         )
         await thread.send(embed=embed)
 
-    @app_commands.command(name="start", description="Start a battle between your armies.")
+    @app_commands.command(name="battle_start", description="Start a battle between your armies.")
     @app_commands.describe(
         aggressor_army="ID of the aggressor's army",
         defender_army="ID of the defender's army"
@@ -133,7 +133,7 @@ class Battle(commands.Cog):
             file=discord.File(image, filename="battlefield.png")
         )
 
-    @app_commands.command(name="place", description="Place a unit on the battlefield.")
+    @app_commands.command(name="battle_place", description="Place a unit on the battlefield.")
     @app_commands.describe(
         unit_type="Type of unit to place",
         x="X coordinate (0-8)",
@@ -189,7 +189,7 @@ class Battle(commands.Cog):
             file=discord.File(image, filename="battlefield.png")
         )
 
-    @app_commands.command(name="action", description="Perform a battle action.")
+    @app_commands.command(name="battle_action", description="Perform a battle action.")
     @app_commands.describe(
         action_type="Type of action to perform",
         from_x="Starting X coordinate",
@@ -272,7 +272,7 @@ class Battle(commands.Cog):
             file=discord.File(image, filename="battlefield.png")
         )
 
-    @app_commands.command(name="forfeit", description="Forfeit the current battle.")
+    @app_commands.command(name="battle_forfeit", description="Forfeit the current battle.")
     async def battle_forfeit(self, interaction: discord.Interaction):
         game = game_manager.get_game(interaction.channel_id)
         if not game or not game.battle:
