@@ -8,13 +8,22 @@ class Admin(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="sync", description="Sync slash commands with Discord (owner only)")
-    async def sync(self, interaction: discord.Interaction):
+    @app_commands.describe(guild_id="Optional: Guild ID to sync to (faster than global)")
+    async def sync(self, interaction: discord.Interaction, guild_id: str = ""):
         if interaction.user.id != self.bot.owner_id:
             await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
             return
         try:
-            await self.bot.tree.sync()
-            await interaction.response.send_message("✅ Slash commands synced successfully!", ephemeral=True)
+            if guild_id and guild_id.strip():
+                # Sync to specific guild (faster)
+                guild = discord.Object(id=int(guild_id))
+                self.bot.tree.copy_global_to(guild=guild)
+                synced = await self.bot.tree.sync(guild=guild)
+                await interaction.response.send_message(f"✅ Synced {len(synced)} commands to guild {guild_id}!", ephemeral=True)
+            else:
+                # Global sync (can take up to 1 hour)
+                synced = await self.bot.tree.sync()
+                await interaction.response.send_message(f"✅ Synced {len(synced)} commands globally (may take up to 1 hour to appear)!", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"❌ Error syncing commands: {e}", ephemeral=True)
 
