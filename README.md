@@ -56,7 +56,7 @@ This will remove any old slash commands that might still be cached by Discord an
 
 ## Dependencies
 
-- `py-cord` - Discord API wrapper
+- `discord.py` - Discord API wrapper
 - `python-dotenv` - Environment variable management
 - `Pillow` - Image processing for battlefield rendering
 
@@ -137,6 +137,10 @@ This project follows PEP 8 standards and includes:
 - Modular design with separation of concerns
 - Comprehensive documentation
 
+### Framework
+
+Built with **discord.py** for reliable Discord integration and modern async/await patterns.
+
 ### Testing
 
 To test the battlefield renderer:
@@ -191,6 +195,6 @@ For issues, questions, or contributions, please open an issue on the GitHub repo
 
 ## Acknowledgments
 
-- Built with py-cord for Discord integration
+- Built with discord.py for Discord integration
 - Uses Pillow for image processing
 - Inspired by tactical strategy games

@@ -13,12 +13,12 @@ intents.message_content = True
 # Subclass Bot to load extensions asynchronously  
 class BattleBot(commands.Bot):
     async def setup_hook(self):
-        # Load cogs - in py-cord load_extension is synchronous
+        # Load cogs - in discord.py load_extension is async
         cog_files = os.listdir('./cogs')
         for filename in cog_files:
             if filename.endswith('.py'):
                 try:
-                    self.load_extension(f'cogs.{filename[:-3]}')
+                    await self.load_extension(f'cogs.{filename[:-3]}')
                     print(f'Loaded cog: {filename}')
                 except Exception as e:
                     print(f'Failed to load cog {filename}: {e}')
@@ -41,8 +41,8 @@ async def on_ready():
 async def sync(ctx):
     """Syncs slash commands with Discord."""
     try:
-        # sync slash commands via py-cord
-        await bot.sync_commands()
+        # sync slash commands via discord.py
+        await bot.tree.sync()
         await ctx.send("Commands synced successfully!")
     except Exception as e:
         await ctx.send(f"Error syncing commands: {e}")
@@ -53,8 +53,9 @@ async def sync(ctx):
 async def clear_commands(ctx):
     """Clears all slash commands from Discord."""
     try:
-        # Clear all global slash commands (py-cord method)
-        await bot.sync_commands(delete_existing=True)
+        # Clear all global slash commands (discord.py method)
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
         await ctx.send(
             "All slash commands cleared! "
             "Use `!sync` to register current commands."
@@ -68,8 +69,9 @@ async def clear_commands(ctx):
 async def force_sync(ctx):
     """Clears old commands and syncs current ones."""
     try:
-        # Clear all commands and resync (py-cord method)
-        await bot.sync_commands(delete_existing=True)
+        # Clear all commands and resync (discord.py method)
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
         await ctx.send(
             "Force sync completed! "
             "This should clear old commands and register new ones."

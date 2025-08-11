@@ -1,24 +1,28 @@
 import discord
-from discord.commands import slash_command
 from discord.ext import commands
+from discord import app_commands
 from game.game_manager import game_manager
 
 class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(description="Sync slash commands with Discord (owner only)")
-    @commands.is_owner()
-    async def sync(self, ctx: discord.ApplicationContext):
+    @app_commands.command(name="sync", description="Sync slash commands with Discord (owner only)")
+    async def sync(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+            return
         try:
-            await self.bot.sync_commands()
-            await ctx.respond("✅ Slash commands synced successfully!", ephemeral=True)
+            await self.bot.tree.sync()
+            await interaction.response.send_message("✅ Slash commands synced successfully!", ephemeral=True)
         except Exception as e:
-            await ctx.respond(f"❌ Error syncing commands: {e}", ephemeral=True)
+            await interaction.response.send_message(f"❌ Error syncing commands: {e}", ephemeral=True)
 
-    @slash_command(description="Show a leaderboard of all users' armies (admin only)")
-    @commands.is_owner()
-    async def army_leaderboard(self, ctx: discord.ApplicationContext):
+    @app_commands.command(name="army_leaderboard", description="Show a leaderboard of all users' armies (admin only)")
+    async def army_leaderboard(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+            return
         # Aggregate all armies from all games
         user_stats = {}
         for game in game_manager.games.values():
@@ -30,7 +34,7 @@ class Admin(commands.Cog):
                     user_stats[user_id]["unit_count"] += sum(u["count"] for u in army["units"])
 
         if not user_stats:
-            await ctx.respond("No armies found.", ephemeral=True)
+            await interaction.response.send_message("No armies found.", ephemeral=True)
             return
 
         # Sort by army count, then by unit count
@@ -51,7 +55,7 @@ class Admin(commands.Cog):
             description="\n".join(lines),
             color=discord.Color.gold()
         )
-        await ctx.respond(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))
