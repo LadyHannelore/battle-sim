@@ -22,6 +22,13 @@ class BattleBot(commands.Bot):
                     print(f'Loaded cog: {filename}')
                 except Exception as e:
                     print(f'Failed to load cog {filename}: {e}')
+        
+        # Sync slash commands automatically on startup
+        try:
+            synced = await self.tree.sync()
+            print(f'Synced {len(synced)} command(s) with Discord')
+        except Exception as e:
+            print(f'Failed to sync commands: {e}')
 
 bot = BattleBot(command_prefix="!", intents=intents)
 
@@ -33,51 +40,6 @@ async def on_ready():
     else:
         print('Logged in as Unknown User')
     print('-------------------')
-
-
-
-@bot.command()
-@commands.is_owner()
-async def sync(ctx):
-    """Syncs slash commands with Discord."""
-    try:
-        # sync slash commands via discord.py
-        await bot.tree.sync()
-        await ctx.send("Commands synced successfully!")
-    except Exception as e:
-        await ctx.send(f"Error syncing commands: {e}")
-
-
-@bot.command()
-@commands.is_owner()
-async def clear_commands(ctx):
-    """Clears all slash commands from Discord."""
-    try:
-        # Clear all global slash commands (discord.py method)
-        bot.tree.clear_commands(guild=None)
-        await bot.tree.sync()
-        await ctx.send(
-            "All slash commands cleared! "
-            "Use `!sync` to register current commands."
-        )
-    except Exception as e:
-        await ctx.send(f"Error clearing commands: {e}")
-
-
-@bot.command()
-@commands.is_owner()
-async def force_sync(ctx):
-    """Clears old commands and syncs current ones."""
-    try:
-        # Clear all commands and resync (discord.py method)
-        bot.tree.clear_commands(guild=None)
-        await bot.tree.sync()
-        await ctx.send(
-            "Force sync completed! "
-            "This should clear old commands and register new ones."
-        )
-    except Exception as e:
-        await ctx.send(f"Error during force sync: {e}")
 
 
 # Check if token is available
