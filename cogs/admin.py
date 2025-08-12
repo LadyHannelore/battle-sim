@@ -80,10 +80,6 @@ class Admin(commands.Cog):
     @app_commands.command(name="resources_view", description="View your resources (admin: for any user) in this game thread")
     @app_commands.describe(user_id="Optional: user id to view (admin only)")
     async def resources_view(self, interaction: discord.Interaction, user_id: str = ""):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
         target_id = interaction.user.id
         if user_id.strip():
             if not self._is_admin(interaction):
@@ -94,7 +90,9 @@ class Admin(commands.Cog):
             except Exception:
                 await interaction.response.send_message("Invalid user_id.", ephemeral=True)
                 return
-        res = game.get_resources(target_id)
+        
+        # Use global resource system - works in any channel
+        res = game_manager.get_global_resources(target_id)
         if not res["success"]:
             await interaction.response.send_message(res["message"], ephemeral=True)
             return
@@ -138,19 +136,15 @@ class Admin(commands.Cog):
         if not self._is_admin(interaction):
             await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
         try:
             uid = int(user_id)
         except Exception:
             await interaction.response.send_message("Invalid user_id.", ephemeral=True)
             return
         
-        # Use kwargs to set any resource
+        # Use global resource system - works in any channel
         kwargs = {resource_name: value}
-        res = game.set_resources(uid, **kwargs)
+        res = game_manager.set_global_resources(uid, **kwargs)
         await interaction.response.send_message(res.get("message", "Done."), ephemeral=True)
 
     @app_commands.command(name="resources_add", description="Admin: add resources (positive/negative) to a user in this game thread")
@@ -163,19 +157,15 @@ class Admin(commands.Cog):
         if not self._is_admin(interaction):
             await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
         try:
             uid = int(user_id)
         except Exception:
             await interaction.response.send_message("Invalid user_id.", ephemeral=True)
             return
         
-        # Use kwargs to modify any resource
+        # Use global resource system - works in any channel
         kwargs = {resource_name: amount}
-        res = game.add_resources(uid, **kwargs)
+        res = game_manager.add_global_resources(uid, **kwargs)
         await interaction.response.send_message(res.get("message", "Done."), ephemeral=True)
 
     @app_commands.command(name="resources_add_unique", description="Admin: add a unique resource to a player")
@@ -188,17 +178,14 @@ class Admin(commands.Cog):
         if not self._is_admin(interaction):
             await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
         try:
             uid = int(user_id)
         except Exception:
             await interaction.response.send_message("Invalid user_id.", ephemeral=True)
             return
         
-        res = game.add_unique_resource(uid, resource_name, description)
+        # Use global resource system - works in any channel
+        res = game_manager.add_global_unique_resource(uid, resource_name, description)
         await interaction.response.send_message(res.get("message", "Done."), ephemeral=True)
 
 async def setup(bot):

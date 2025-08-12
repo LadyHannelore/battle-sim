@@ -10,36 +10,20 @@ class Army(commands.Cog):
 
     @app_commands.command(name="army_create", description="Create a new army for 1 labor.")
     async def army_create(self, interaction: discord.Interaction):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message(
-                'This command can only be used inside a battle thread.',
-                ephemeral=True
-            )
-            return
-
-        # In a real implementation, you would check and consume 1 labor
-        # resource here.
-        army = game.add_army(interaction.user.id)
+        # Use global army system - works in any channel
+        army = game_manager.add_global_army(interaction.user.id)
         await interaction.response.send_message(
             f"✅ **Army #{army['id']} created!** \n"
             f"Starting units: 5 infantry, 1 commander\n\n"
             f"💡 **Next steps:**\n"
             f"• Use `/army_modify` to customize your army\n"
-            f"• Use `/battle_start` to fight with this army"
+            f"• Use `/battle_start` in a battle thread to fight with this army"
         )
 
     @app_commands.command(name="army_view", description="View your current armies.")
     async def army_view(self, interaction: discord.Interaction):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message(
-                'This command can only be used inside a battle thread.',
-                ephemeral=True
-            )
-            return
-
-        player_armies = game.armies.get(interaction.user.id, [])
+        # Use global army system - works in any channel
+        player_armies = game_manager.get_player_armies(interaction.user.id)
         if not player_armies:
             await interaction.response.send_message('You have no armies.', ephemeral=True)
             return
@@ -47,7 +31,7 @@ class Army(commands.Cog):
         embed = discord.Embed(
             title=f"{interaction.user.name}'s Armies",
             description=('🏹 **Ready for Battle!** Use `/battle_start` '
-                         'with these army IDs to begin combat.'),
+                         'in a battle thread with these army IDs to begin combat.'),
             color=discord.Color.dark_red()
         )
 
@@ -67,7 +51,7 @@ class Army(commands.Cog):
         embed.add_field(
             name='Battle Instructions',
             value=('💡 Use `/battle_start aggressor_army:[ID] '
-                   'defender_army:[ID]` to fight!'),
+                   'defender_army:[ID]` in a battle thread to fight!'),
             inline=False
         )
 
@@ -76,8 +60,8 @@ class Army(commands.Cog):
     @app_commands.command(name="army_modify", description="Purchase modifications for an army.")
     @app_commands.describe(
         army_id="The ID of the army to modify",
-    modification="The type of modification to purchase",
-    quantity="How many of this modification to purchase (default 1)"
+        modification="The type of modification to purchase",
+        quantity="How many of this modification to purchase (default 1)"
     )
     @app_commands.choices(modification=[
         app_commands.Choice(name="3 Shock Units (1 Bronze)", value="shock"),
@@ -89,18 +73,11 @@ class Army(commands.Cog):
         self,
         interaction: discord.Interaction,
         army_id: int,
-    modification: str,
-    quantity: int = 1
+        modification: str,
+        quantity: int = 1
     ):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message(
-                'This command can only be used inside a battle thread.',
-                ephemeral=True
-            )
-            return
-
-        result = game.modify_army(
+        # Use global army system - works in any channel
+        result = game_manager.modify_global_army(
             interaction.user.id, army_id, modification, quantity
         )
 
@@ -116,15 +93,8 @@ class Army(commands.Cog):
         interaction: discord.Interaction,
         army_id: int
     ):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message(
-                'This command can only be used inside a battle thread.',
-                ephemeral=True
-            )
-            return
-
-        result = game.disband_army(interaction.user.id, army_id)
+        # Use global army system - works in any channel
+        result = game_manager.disband_global_army(interaction.user.id, army_id)
         if result['success']:
             await interaction.response.send_message(f"🗑️ Army #{army_id} has been disbanded.")
         else:
@@ -143,12 +113,8 @@ class Army(commands.Cog):
         app_commands.Choice(name="Books (from metropolis)", value="books")
     ])
     async def spawn_resource(self, interaction: discord.Interaction, resource_type: str, amount: int = 1):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
-        
-        result = game.spawn_resource(interaction.user.id, resource_type, amount)
+        # Use global resource system - works in any channel
+        result = game_manager.spawn_global_resource(interaction.user.id, resource_type, amount)
         if result['success']:
             await interaction.response.send_message(f"✅ {result['message']}")
         else:
@@ -157,12 +123,8 @@ class Army(commands.Cog):
     @app_commands.command(name="craft_bronze", description="Convert copper and tin into bronze (1 copper + 1 tin = 2 bronze)")
     @app_commands.describe(amount="How many sets to convert (default 1)")
     async def craft_bronze(self, interaction: discord.Interaction, amount: int = 1):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
-        
-        result = game.craft_bronze(interaction.user.id, amount)
+        # Use global resource system - works in any channel
+        result = game_manager.craft_global_bronze(interaction.user.id, amount)
         if result['success']:
             await interaction.response.send_message(f"⚒️ {result['message']}")
         else:
@@ -174,11 +136,7 @@ class Army(commands.Cog):
         description="Detailed description (minimum 200 words for approval)"
     )
     async def create_unique_resource(self, interaction: discord.Interaction, name: str, description: str):
-        game = game_manager.get_game(interaction.channel_id)
-        if not game:
-            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
-            return
-        
+        # This works in any channel
         if len(description.split()) < 200:
             await interaction.response.send_message("❌ Description must be at least 200 words for approval.", ephemeral=True)
             return

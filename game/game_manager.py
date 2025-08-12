@@ -620,6 +620,49 @@ class GameState:
 class GameManager:
     def __init__(self):
         self.games = {}
+        # Global player data (accessible from any channel)
+        self.global_players = {}
+
+    def _ensure_player(self, player_id):
+        """Ensure a player exists in global system."""
+        if player_id not in self.global_players:
+            self.global_players[player_id] = {
+                "armies": [],
+                "resources": self._create_initial_resources()
+            }
+        return self.global_players[player_id]
+
+    def _create_initial_resources(self):
+        """Create default resource allocation for a new player."""
+        return {
+            # Basic spawnable resources
+            "food": 10,
+            "timber": 5,
+            "copper": 2,
+            "tin": 2,
+            "mounts": 3,
+            "books": 0,
+            
+            # Crafted resources
+            "bronze": 5,  # starts with some bronze
+            
+            # Population & economy
+            "population": 5,
+            "labor": 5,
+            "coins": 10,
+            
+            # Unique resources (dict of resource_name: description)
+            "unique_resources": {},
+            
+            # Land & tiles (for spawning)
+            "total_tiles": 10,
+            "farmland_tiles": 3,
+            "forest_tiles": 2,
+            "copper_tiles": 1,
+            "tin_tiles": 1,
+            "mount_tiles": 2,
+            "metropolis_tiles": 1,
+        }
 
     def create_game(self, channel_id, aggressor, defender):
         if channel_id in self.games:
@@ -670,6 +713,226 @@ class GameManager:
         game.battle = None
 
         return {"success": True, "message": "Battle concluded. Defeated army has been removed."}
+
+    # Global player management methods (work from any channel)
+    def get_player_armies(self, player_id):
+        """Get armies for a player from global system."""
+        player = self._ensure_player(player_id)
+        return player["armies"]
+
+    def add_global_army(self, player_id):
+        """Add an army to a player in global system."""
+        player = self._ensure_player(player_id)
+        army = {
+            "id": len(player["armies"]) + 1,
+            "owner": player_id,
+            "units": [
+                {"type": UnitType.INFANTRY, "count": 5},
+                {"type": UnitType.COMMANDER, "count": 1},
+            ],
+        }
+        player["armies"].append(army)
+        try:
+            from utils.sheets_sync import sync_army
+            sync_army(army)
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync army: {e}")
+        return army
+
+    def get_global_army(self, player_id, army_id):
+        """Get a specific army from global system."""
+        player = self._ensure_player(player_id)
+        for army in player["armies"]:
+            if army['id'] == army_id:
+                return army
+        return None
+
+    def disband_global_army(self, player_id, army_id):
+        """Disband an army from global system."""
+        player = self._ensure_player(player_id)
+        armies = player["armies"]
+        initial_len = len(armies)
+        player["armies"] = [a for a in armies if a['id'] != army_id]
+        if len(player["armies"]) == initial_len:
+            return {"success": False, "message": f"Army #{army_id} not found."}
+        
+        remaining = player["armies"]
+        if not remaining:
+            return {"success": True, "message": f"Army #{army_id} has been disbanded. You have no armies left."}
+        army_list = '\n'.join(f"Army #{a['id']}: " + ', '.join(f"{u['count']} {u['type']}" for u in a['units']) for a in remaining)
+        try:
+            from utils.sheets_sync import sync_army
+            for a in remaining:
+                sync_army(a)
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync armies after disband: {e}")
+        return {"success": True, "message": f"Army #{army_id} has been disbanded.\nYour remaining armies:\n{army_list}"}
+
+    def modify_global_army(self, player_id, army_id, modification, quantity: int = 1):
+        """Modify an army in global system."""
+        player = self._ensure_player(player_id)
+        army = self.get_global_army(player_id, army_id)
+        if not army:
+            return {"success": False, "message": "Army not found."}
+
+        player_resources = player["resources"]
+        cost = {}
+        new_units = []
+
+        # sanitize quantity
+        try:
+            quantity = int(quantity)
+        except Exception:
+            quantity = 1
+        if quantity < 1:
+            quantity = 1
+        if quantity > 50:
+            quantity = 50  # simple safety cap
+
+        if modification == 'shock':
+            cost = {"bronze": 1}
+            new_units = [{"type": 'shock', "count": 3}]
+        elif modification == 'archer':
+            cost = {"timber": 1}
+            new_units = [{"type": 'archer', "count": 3}]
+        elif modification == 'cavalry':
+            cost = {"mounts": 1}
+            new_units = [{"type": 'cavalry', "count": 4}]
+        elif modification == 'chariot':
+            cost = {"mounts": 1}
+            new_units = [{"type": 'chariot', "count": 2}]
+        else:
+            return {"success": False, "message": "Invalid modification."}
+
+        # scale cost and units by quantity
+        cost = {k: v * quantity for k, v in cost.items()}
+        for u in new_units:
+            u["count"] *= quantity
+
+        for resource, amount in cost.items():
+            if player_resources.get(resource, 0) < amount:
+                return {"success": False, "message": f"Not enough {resource}. Required: {amount}, You have: {player_resources.get(resource, 0)}."}
+
+        for resource, amount in cost.items():
+            player_resources[resource] -= amount
+
+        for new_unit in new_units:
+            existing_unit = next((u for u in army['units'] if u['type'] == new_unit['type']), None)
+            if existing_unit:
+                existing_unit['count'] += new_unit['count']
+            else:
+                army['units'].append(new_unit)
+
+        try:
+            from utils.sheets_sync import sync_army
+            sync_army(army)
+        except Exception as e:
+            print(f"[Sheets Sync] Failed to sync army: {e}")
+
+        # Detailed info: show new army composition and resources
+        unit_descriptions = []
+        for u in new_units:
+            unit_descriptions.append(f"{u['count']} {u['type']}")
+        units_text = ', '.join(unit_descriptions)
+        army_comp = ', '.join(f"{u['count']} {u['type']}" for u in army['units'])
+        resources_text = ', '.join(f"{k}: {v}" for k, v in player_resources.items() if isinstance(v, (int, float)))
+        return {
+            "success": True,
+            "message": (
+                f"Army #{army_id} successfully modified with {units_text}.\n"
+                f"New composition: {army_comp}.\n"
+                f"Your resources: {resources_text}."
+            )
+        }
+
+    def get_global_resources(self, player_id):
+        """Get resources for a player from global system."""
+        player = self._ensure_player(player_id)
+        return {"success": True, "resources": dict(player["resources"])}
+
+    def set_global_resources(self, player_id, **kwargs):
+        """Set specific resource values for a player in global system."""
+        player = self._ensure_player(player_id)
+        res = player["resources"]
+        
+        for key, val in kwargs.items():
+            if val is not None:
+                try:
+                    if key == "unique_resources":
+                        if isinstance(val, dict):
+                            res[key] = val
+                        else:
+                            return {"success": False, "message": f"unique_resources must be a dict."}
+                    else:
+                        iv = int(val)
+                        res[key] = max(0, iv)
+                except (ValueError, TypeError):
+                    return {"success": False, "message": f"Invalid value for {key}."}
+        return {"success": True, "resources": dict(res), "message": "Resources updated."}
+
+    def add_global_resources(self, player_id, **kwargs):
+        """Add/subtract resource values for a player in global system."""
+        player = self._ensure_player(player_id)
+        res = player["resources"]
+        
+        for key, delta in kwargs.items():
+            if delta != 0:
+                try:
+                    if key == "unique_resources":
+                        return {"success": False, "message": "Use set_global_resources for unique_resources."}
+                    iv = int(delta)
+                    res[key] = max(0, res.get(key, 0) + iv)
+                except (ValueError, TypeError):
+                    return {"success": False, "message": f"Invalid delta for {key}."}
+        return {"success": True, "resources": dict(res), "message": "Resources adjusted."}
+
+    def spawn_global_resource(self, player_id, resource_type: str, tile_count: int = 1):
+        """Spawn resources from tiles using labor in global system."""
+        player = self._ensure_player(player_id)
+        res = player["resources"]
+        
+        if res.get("labor", 0) < tile_count:
+            return {"success": False, "message": f"Not enough labor. Need {tile_count}, have {res.get('labor', 0)}."}
+        
+        tile_key = f"{resource_type}_tiles"
+        if res.get(tile_key, 0) < tile_count:
+            return {"success": False, "message": f"Not enough {resource_type} tiles. Need {tile_count}, have {res.get(tile_key, 0)}."}
+        
+        res["labor"] -= tile_count
+        res[resource_type] = res.get(resource_type, 0) + tile_count
+        
+        return {"success": True, "message": f"Spawned {tile_count} {resource_type} using {tile_count} labor."}
+
+    def craft_global_bronze(self, player_id, amount: int = 1):
+        """Convert copper + tin to bronze in global system."""
+        player = self._ensure_player(player_id)
+        res = player["resources"]
+        
+        copper_needed = amount
+        tin_needed = amount
+        bronze_produced = amount * 2
+        
+        if res.get("copper", 0) < copper_needed:
+            return {"success": False, "message": f"Not enough copper. Need {copper_needed}, have {res.get('copper', 0)}."}
+        if res.get("tin", 0) < tin_needed:
+            return {"success": False, "message": f"Not enough tin. Need {tin_needed}, have {res.get('tin', 0)}."}
+        
+        res["copper"] -= copper_needed
+        res["tin"] -= tin_needed
+        res["bronze"] = res.get("bronze", 0) + bronze_produced
+        
+        return {"success": True, "message": f"Crafted {bronze_produced} bronze from {copper_needed} copper and {tin_needed} tin."}
+
+    def add_global_unique_resource(self, player_id, resource_name: str, description: str):
+        """Add a unique resource to a player's collection in global system."""
+        player = self._ensure_player(player_id)
+        res = player["resources"]
+        
+        if "unique_resources" not in res:
+            res["unique_resources"] = {}
+        
+        res["unique_resources"][resource_name] = description
+        return {"success": True, "message": f"Added unique resource: {resource_name}"}
 
 
 game_manager = GameManager()
