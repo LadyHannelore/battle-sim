@@ -24,6 +24,7 @@ import threading
 import time
 import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse, urlunparse
 from urllib import request as urllib_request
 from urllib.error import URLError, HTTPError
 
@@ -84,6 +85,25 @@ def _self_ping_loop(url: str, interval_s: int):
         time.sleep(max(30, interval_s))
 
 
+def _normalize_url(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    u = raw.strip().strip('"').strip("'")
+    # Prepend https if no scheme
+    if '://' not in u:
+        u = 'https://' + u
+    try:
+        parsed = urlparse(u)
+        if not parsed.scheme or not parsed.netloc:
+            return None
+        # Default path to /health if missing
+        path = parsed.path if parsed.path else '/health'
+        normalized = parsed._replace(path=path)
+        return urlunparse(normalized)
+    except Exception:
+        return None
+
+
 def start_keepalive():
     """Start the keep-alive HTTP server and optional self-pinger if configured.
 
@@ -105,7 +125,7 @@ def start_keepalive():
         print(f"[keep-alive] HTTP server running on {host}:{port}")
 
     # Optional self-ping
-    ping_url = os.environ.get("KEEPALIVE_URL") or _infer_replit_url()
+    ping_url = _normalize_url(os.environ.get("KEEPALIVE_URL") or _infer_replit_url())
     interval_s = int(os.environ.get("KEEPALIVE_INTERVAL_S", "240"))
 
     if ping_url:
@@ -113,6 +133,6 @@ def start_keepalive():
         t2.start()
         print(f"[keep-alive] Self-pinging {ping_url} every {interval_s}s")
     else:
-        print("[keep-alive] No KEEPALIVE_URL found; self-ping disabled")
+        print("[keep-alive] No valid KEEPALIVE_URL found; self-ping disabled")
 
     start_keepalive._started = True  # type: ignore[attr-defined]
