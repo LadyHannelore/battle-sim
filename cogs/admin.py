@@ -7,11 +7,22 @@ class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def _is_admin(self, interaction: discord.Interaction) -> bool:
+        """Check if user is bot owner or has 'mod' role."""
+        if interaction.user.id == self.bot.owner_id:
+            return True
+        # Check if user is a Member (has roles) and has 'mod' role
+        if hasattr(interaction, 'guild') and interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if member and hasattr(member, 'roles'):
+                return any(role.name.lower() == 'mod' for role in member.roles)
+        return False
+
     @app_commands.command(name="sync", description="Sync slash commands with Discord (owner only)")
     @app_commands.describe(guild_id="Optional: Guild ID to sync to (faster than global)")
     async def sync(self, interaction: discord.Interaction, guild_id: str = ""):
-        if interaction.user.id != self.bot.owner_id:
-            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+        if not self._is_admin(interaction):
+            await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
         try:
             if guild_id and guild_id.strip():
@@ -29,8 +40,8 @@ class Admin(commands.Cog):
 
     @app_commands.command(name="army_leaderboard", description="Show a leaderboard of all users' armies (admin only)")
     async def army_leaderboard(self, interaction: discord.Interaction):
-        if interaction.user.id != self.bot.owner_id:
-            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+        if not self._is_admin(interaction):
+            await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
         # Aggregate all armies from all games
         user_stats = {}
@@ -75,8 +86,8 @@ class Admin(commands.Cog):
             return
         target_id = interaction.user.id
         if user_id.strip():
-            if interaction.user.id != self.bot.owner_id:
-                await interaction.response.send_message("Only the bot owner can query other users.", ephemeral=True)
+            if not self._is_admin(interaction):
+                await interaction.response.send_message("Only the bot owner or users with 'mod' role can query other users.", ephemeral=True)
                 return
             try:
                 target_id = int(user_id)
@@ -124,8 +135,8 @@ class Admin(commands.Cog):
         value="Value to set (for unique resources, use /resources_add_unique)"
     )
     async def resources_set(self, interaction: discord.Interaction, user_id: str, resource_name: str, value: int):
-        if interaction.user.id != self.bot.owner_id:
-            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+        if not self._is_admin(interaction):
+            await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
         game = game_manager.get_game(interaction.channel_id)
         if not game:
@@ -149,8 +160,8 @@ class Admin(commands.Cog):
         amount="Amount to add (can be negative)"
     )
     async def resources_add(self, interaction: discord.Interaction, user_id: str, resource_name: str, amount: int):
-        if interaction.user.id != self.bot.owner_id:
-            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+        if not self._is_admin(interaction):
+            await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
         game = game_manager.get_game(interaction.channel_id)
         if not game:
@@ -174,8 +185,8 @@ class Admin(commands.Cog):
         description="Description of the unique resource"
     )
     async def resources_add_unique(self, interaction: discord.Interaction, user_id: str, resource_name: str, description: str):
-        if interaction.user.id != self.bot.owner_id:
-            await interaction.response.send_message("Only the bot owner can use this command.", ephemeral=True)
+        if not self._is_admin(interaction):
+            await interaction.response.send_message("Only the bot owner or users with 'mod' role can use this command.", ephemeral=True)
             return
         game = game_manager.get_game(interaction.channel_id)
         if not game:
