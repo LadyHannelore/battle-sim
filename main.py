@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from utils.keep_alive import start_keepalive
 
 load_dotenv()
 
@@ -48,5 +49,8 @@ if not token:
     print("Error: TOKEN environment variable not found!")
     print("Please check your .env file or set the TOKEN environment variable.")
     exit(1)
+
+# Start keep-alive components if configured (no-op if env not set)
+start_keepalive()
 
 bot.run(token)

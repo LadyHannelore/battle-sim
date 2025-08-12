@@ -177,6 +177,24 @@ If you see old slash commands when typing `/` that are no longer in the code:
 - `!clear_commands` - Clear all slash commands from Discord
 - `!force_sync` - Clear old commands and sync new ones
 
+## Replit keep-alive
+
+This project includes a tiny HTTP server and optional self-pinger to help keep the Replit instance awake.
+
+Environment variables (add them in Replit Secrets):
+
+- `KEEP_ALIVE=true` – starts a lightweight HTTP server on the port Replit provides
+- `KEEPALIVE_URL=https://<your-repl-subdomain>.<owner>.repl.co` – optional; if omitted, we try to auto-detect
+- `KEEPALIVE_INTERVAL_S=240` – optional; how often to ping (seconds)
+
+Health endpoints served by the built-in server:
+
+- `GET /` → 200 OK
+- `GET /health` → 200 OK
+- `GET /ping` → 200 OK
+
+Recommended: set up an external uptime monitor (e.g., UptimeRobot) to ping `https://<your-repl>/health` every 5 minutes. Self-pinging may not always prevent sleep on free tiers; an external monitor is more reliable.
+
 ## Contributing
 
 1. Fork the repository
