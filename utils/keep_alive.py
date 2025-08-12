@@ -104,6 +104,21 @@ def _normalize_url(raw: str | None) -> str | None:
         return None
 
 
+def _can_resolve_host(url: str) -> tuple[bool, str | None]:
+    host: str | None = None
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname
+        if not host:
+            return False, None
+        # Try resolving the hostname; choose a common port based on scheme
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        socket.getaddrinfo(host, port)
+        return True, host
+    except Exception:
+        return False, host
+
+
 def start_keepalive():
     """Start the keep-alive HTTP server and optional self-pinger if configured.
 
@@ -129,9 +144,14 @@ def start_keepalive():
     interval_s = int(os.environ.get("KEEPALIVE_INTERVAL_S", "240"))
 
     if ping_url:
-        t2 = threading.Thread(target=_self_ping_loop, args=(ping_url, interval_s), daemon=True)
-        t2.start()
-        print(f"[keep-alive] Self-pinging {ping_url} every {interval_s}s")
+        resolvable, host = _can_resolve_host(ping_url)
+        if not resolvable:
+            h = host or '<unknown>'
+            print(f"[keep-alive] KEEPALIVE_URL host cannot be resolved: {h}; self-ping disabled")
+        else:
+            t2 = threading.Thread(target=_self_ping_loop, args=(ping_url, interval_s), daemon=True)
+            t2.start()
+            print(f"[keep-alive] Self-pinging {ping_url} every {interval_s}s")
     else:
         print("[keep-alive] No valid KEEPALIVE_URL found; self-ping disabled")
 

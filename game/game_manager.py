@@ -352,7 +352,7 @@ class GameState:
             print(f"[Sheets Sync] Failed to sync armies after disband: {e}")
         return {"success": True, "message": f"Army #{army_id} has been disbanded.\nYour remaining armies:\n{army_list}"}
 
-    def modify_army(self, player_id, army_id, modification):
+    def modify_army(self, player_id, army_id, modification, quantity: int = 1):
         army = self.get_army(player_id, army_id)
         if not army:
             return {"success": False, "message": "Army not found."}
@@ -360,6 +360,16 @@ class GameState:
         player_resources = self.resources[player_id]
         cost = {}
         new_units = []
+
+        # sanitize quantity
+        try:
+            quantity = int(quantity)
+        except Exception:
+            quantity = 1
+        if quantity < 1:
+            quantity = 1
+        if quantity > 50:
+            quantity = 50  # simple safety cap
 
         if modification == 'shock':
             cost = {"bronze": 1}
@@ -375,6 +385,11 @@ class GameState:
             new_units = [{"type": 'chariot', "count": 2}]
         else:
             return {"success": False, "message": "Invalid modification."}
+
+        # scale cost and units by quantity
+        cost = {k: v * quantity for k, v in cost.items()}
+        for u in new_units:
+            u["count"] *= quantity
 
         for resource, amount in cost.items():
             if player_resources.get(resource, 0) < amount:
@@ -411,6 +426,40 @@ class GameState:
                 f"Your resources: {resources_text}."
             )
         }
+
+    def get_resources(self, player_id):
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        return {"success": True, "resources": dict(res)}
+
+    def set_resources(self, player_id, bronze: int | None = None, timber: int | None = None,
+                      mounts: int | None = None, food: int | None = None):
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        for key, val in (("bronze", bronze), ("timber", timber), ("mounts", mounts), ("food", food)):
+            if val is not None:
+                try:
+                    iv = int(val)
+                except Exception:
+                    return {"success": False, "message": f"Invalid value for {key}."}
+                res[key] = max(0, iv)
+        return {"success": True, "resources": dict(res), "message": "Resources updated."}
+
+    def add_resources(self, player_id, bronze: int = 0, timber: int = 0,
+                      mounts: int = 0, food: int = 0):
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        # Apply deltas safely
+        for key, delta in (("bronze", bronze), ("timber", timber), ("mounts", mounts), ("food", food)):
+            try:
+                iv = int(delta)
+            except Exception:
+                return {"success": False, "message": f"Invalid delta for {key}."}
+            res[key] = max(0, res.get(key, 0) + iv)
+        return {"success": True, "resources": dict(res), "message": "Resources adjusted."}
 
     def start_battle(self, aggressor_army_id, defender_army_id):
         aggressor_army = self.get_army(self.aggressor['id'], aggressor_army_id)

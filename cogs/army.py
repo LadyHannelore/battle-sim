@@ -76,7 +76,8 @@ class Army(commands.Cog):
     @app_commands.command(name="army_modify", description="Purchase modifications for an army.")
     @app_commands.describe(
         army_id="The ID of the army to modify",
-        modification="The type of modification to purchase"
+    modification="The type of modification to purchase",
+    quantity="How many of this modification to purchase (default 1)"
     )
     @app_commands.choices(modification=[
         app_commands.Choice(name="3 Shock Units (1 Bronze)", value="shock"),
@@ -88,7 +89,8 @@ class Army(commands.Cog):
         self,
         interaction: discord.Interaction,
         army_id: int,
-        modification: str
+    modification: str,
+    quantity: int = 1
     ):
         game = game_manager.get_game(interaction.channel_id)
         if not game:
@@ -99,7 +101,7 @@ class Army(commands.Cog):
             return
 
         result = game.modify_army(
-            interaction.user.id, army_id, modification
+            interaction.user.id, army_id, modification, quantity
         )
 
         if result['success']:
