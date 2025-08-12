@@ -9,13 +9,28 @@ class Admin(commands.Cog):
 
     def _is_admin(self, interaction: discord.Interaction) -> bool:
         """Check if user is bot owner or has 'mod' role."""
+        # Always allow bot owner
         if interaction.user.id == self.bot.owner_id:
             return True
+        
+        # Debug info
+        print(f"[Debug] Checking admin for user {interaction.user.id} ({interaction.user.name})")
+        
         # Check if user is a Member (has roles) and has 'mod' role
         if hasattr(interaction, 'guild') and interaction.guild:
             member = interaction.guild.get_member(interaction.user.id)
             if member and hasattr(member, 'roles'):
-                return any(role.name.lower() == 'mod' for role in member.roles)
+                role_names = [role.name for role in member.roles]
+                print(f"[Debug] User roles: {role_names}")
+                # Check for mod role (case insensitive)
+                has_mod = any(role.name.lower() == 'mod' for role in member.roles)
+                print(f"[Debug] Has mod role: {has_mod}")
+                return has_mod
+            else:
+                print(f"[Debug] Member not found or no roles")
+        else:
+            print(f"[Debug] No guild context")
+        
         return False
 
     @app_commands.command(name="sync", description="Sync slash commands with Discord (owner only)")
