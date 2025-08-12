@@ -301,12 +301,44 @@ class GameState:
             defender['id']: []
         }
         self.resources = {
-            aggressor['id']: {"bronze": 5, "timber": 5, "mounts": 5, "food": 10},
-            defender['id']: {"bronze": 5, "timber": 5, "mounts": 5, "food": 10}
+            aggressor['id']: self._create_initial_resources(),
+            defender['id']: self._create_initial_resources()
         }
         self.battle = None
         self.treaty = None
         self.ceasefire = None
+
+    def _create_initial_resources(self):
+        """Create default resource allocation for a new player."""
+        return {
+            # Basic spawnable resources
+            "food": 10,
+            "timber": 5,
+            "copper": 2,
+            "tin": 2,
+            "mounts": 3,
+            "books": 0,
+            
+            # Crafted resources
+            "bronze": 5,  # starts with some bronze
+            
+            # Population & economy
+            "population": 5,
+            "labor": 5,
+            "coins": 10,
+            
+            # Unique resources (dict of resource_name: description)
+            "unique_resources": {},
+            
+            # Land & tiles (for spawning)
+            "total_tiles": 10,
+            "farmland_tiles": 3,
+            "forest_tiles": 2,
+            "copper_tiles": 1,
+            "tin_tiles": 1,
+            "mount_tiles": 2,
+            "metropolis_tiles": 1,
+        }
 
     def add_army(self, player_id):
         army = {
@@ -433,33 +465,120 @@ class GameState:
             return {"success": False, "message": "Player not found in this game."}
         return {"success": True, "resources": dict(res)}
 
-    def set_resources(self, player_id, bronze: int | None = None, timber: int | None = None,
-                      mounts: int | None = None, food: int | None = None):
+    def set_resources(self, player_id, **kwargs):
+        """Set specific resource values for a player. Accepts any resource name as keyword arg."""
         res = self.resources.get(player_id)
         if res is None:
             return {"success": False, "message": "Player not found in this game."}
-        for key, val in (("bronze", bronze), ("timber", timber), ("mounts", mounts), ("food", food)):
+        
+        for key, val in kwargs.items():
             if val is not None:
                 try:
-                    iv = int(val)
-                except Exception:
+                    if key == "unique_resources":
+                        # Handle unique resources dict separately
+                        if isinstance(val, dict):
+                            res[key] = val
+                        else:
+                            return {"success": False, "message": f"unique_resources must be a dict."}
+                    else:
+                        iv = int(val)
+                        res[key] = max(0, iv)
+                except (ValueError, TypeError):
                     return {"success": False, "message": f"Invalid value for {key}."}
-                res[key] = max(0, iv)
         return {"success": True, "resources": dict(res), "message": "Resources updated."}
 
-    def add_resources(self, player_id, bronze: int = 0, timber: int = 0,
-                      mounts: int = 0, food: int = 0):
+    def add_resources(self, player_id, **kwargs):
+        """Add/subtract resource values for a player. Accepts any resource name as keyword arg."""
         res = self.resources.get(player_id)
         if res is None:
             return {"success": False, "message": "Player not found in this game."}
-        # Apply deltas safely
-        for key, delta in (("bronze", bronze), ("timber", timber), ("mounts", mounts), ("food", food)):
-            try:
-                iv = int(delta)
-            except Exception:
-                return {"success": False, "message": f"Invalid delta for {key}."}
-            res[key] = max(0, res.get(key, 0) + iv)
+        
+        for key, delta in kwargs.items():
+            if delta != 0:  # Skip zero deltas
+                try:
+                    if key == "unique_resources":
+                        return {"success": False, "message": "Use set_resources for unique_resources."}
+                    iv = int(delta)
+                    res[key] = max(0, res.get(key, 0) + iv)
+                except (ValueError, TypeError):
+                    return {"success": False, "message": f"Invalid delta for {key}."}
         return {"success": True, "resources": dict(res), "message": "Resources adjusted."}
+
+    def spawn_resource(self, player_id, resource_type: str, tile_count: int = 1):
+        """Spawn resources from tiles using labor. Returns success/failure."""
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        
+        # Check labor availability
+        if res.get("labor", 0) < tile_count:
+            return {"success": False, "message": f"Not enough labor. Need {tile_count}, have {res.get('labor', 0)}."}
+        
+        # Check tile availability
+        tile_key = f"{resource_type}_tiles"
+        if res.get(tile_key, 0) < tile_count:
+            return {"success": False, "message": f"Not enough {resource_type} tiles. Need {tile_count}, have {res.get(tile_key, 0)}."}
+        
+        # Spawn the resource
+        res["labor"] -= tile_count
+        res[resource_type] = res.get(resource_type, 0) + tile_count
+        
+        return {"success": True, "message": f"Spawned {tile_count} {resource_type} using {tile_count} labor."}
+
+    def craft_bronze(self, player_id, amount: int = 1):
+        """Convert copper + tin to bronze (1 copper + 1 tin = 2 bronze)."""
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        
+        copper_needed = amount
+        tin_needed = amount
+        bronze_produced = amount * 2
+        
+        if res.get("copper", 0) < copper_needed:
+            return {"success": False, "message": f"Not enough copper. Need {copper_needed}, have {res.get('copper', 0)}."}
+        if res.get("tin", 0) < tin_needed:
+            return {"success": False, "message": f"Not enough tin. Need {tin_needed}, have {res.get('tin', 0)}."}
+        
+        res["copper"] -= copper_needed
+        res["tin"] -= tin_needed
+        res["bronze"] = res.get("bronze", 0) + bronze_produced
+        
+        return {"success": True, "message": f"Crafted {bronze_produced} bronze from {copper_needed} copper and {tin_needed} tin."}
+
+    def add_unique_resource(self, player_id, resource_name: str, description: str):
+        """Add a unique resource to a player's collection."""
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        
+        if "unique_resources" not in res:
+            res["unique_resources"] = {}
+        
+        res["unique_resources"][resource_name] = description
+        return {"success": True, "message": f"Added unique resource: {resource_name}"}
+
+    def calculate_food_production(self, player_id):
+        """Calculate food production for next cycle based on farmland and domestic lifeforms."""
+        res = self.resources.get(player_id)
+        if res is None:
+            return {"success": False, "message": "Player not found in this game."}
+        
+        farmland = res.get("farmland_tiles", 0)
+        population = res.get("population", 0)
+        
+        # Simplified calculation - you can adjust modifiers as needed
+        food_produced = farmland * 2 + population  # Basic formula
+        food_consumed = population  # 1 food per population
+        net_food = food_produced - food_consumed
+        
+        return {
+            "success": True,
+            "food_produced": food_produced,
+            "food_consumed": food_consumed,
+            "net_food": net_food,
+            "message": f"Food production: +{food_produced}, consumption: -{food_consumed}, net: {net_food}"
+        }
 
     def start_battle(self, aggressor_army_id, defender_army_id):
         aggressor_army = self.get_army(self.aggressor['id'], aggressor_army_id)

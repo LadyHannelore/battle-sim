@@ -130,5 +130,66 @@ class Army(commands.Cog):
         else:
             await interaction.response.send_message(result['message'], ephemeral=True)
 
+    @app_commands.command(name="spawn_resource", description="Spawn resources from your tiles using labor")
+    @app_commands.describe(
+        resource_type="Type of resource to spawn",
+        amount="Amount to spawn (uses this much labor and tiles)"
+    )
+    @app_commands.choices(resource_type=[
+        app_commands.Choice(name="Timber (from forest tiles)", value="timber"),
+        app_commands.Choice(name="Copper (from copper tiles)", value="copper"),
+        app_commands.Choice(name="Tin (from tin tiles)", value="tin"),
+        app_commands.Choice(name="Mounts (from mount tiles)", value="mounts"),
+        app_commands.Choice(name="Books (from metropolis)", value="books")
+    ])
+    async def spawn_resource(self, interaction: discord.Interaction, resource_type: str, amount: int = 1):
+        game = game_manager.get_game(interaction.channel_id)
+        if not game:
+            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
+            return
+        
+        result = game.spawn_resource(interaction.user.id, resource_type, amount)
+        if result['success']:
+            await interaction.response.send_message(f"✅ {result['message']}")
+        else:
+            await interaction.response.send_message(f"❌ {result['message']}", ephemeral=True)
+
+    @app_commands.command(name="craft_bronze", description="Convert copper and tin into bronze (1 copper + 1 tin = 2 bronze)")
+    @app_commands.describe(amount="How many sets to convert (default 1)")
+    async def craft_bronze(self, interaction: discord.Interaction, amount: int = 1):
+        game = game_manager.get_game(interaction.channel_id)
+        if not game:
+            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
+            return
+        
+        result = game.craft_bronze(interaction.user.id, amount)
+        if result['success']:
+            await interaction.response.send_message(f"⚒️ {result['message']}")
+        else:
+            await interaction.response.send_message(f"❌ {result['message']}", ephemeral=True)
+
+    @app_commands.command(name="create_unique_resource", description="Create a unique resource for your nation (admin approval required)")
+    @app_commands.describe(
+        name="Name of your unique resource",
+        description="Detailed description (minimum 200 words for approval)"
+    )
+    async def create_unique_resource(self, interaction: discord.Interaction, name: str, description: str):
+        game = game_manager.get_game(interaction.channel_id)
+        if not game:
+            await interaction.response.send_message('This command can only be used inside a battle thread.', ephemeral=True)
+            return
+        
+        if len(description.split()) < 200:
+            await interaction.response.send_message("❌ Description must be at least 200 words for approval.", ephemeral=True)
+            return
+        
+        # For now, just notify admins - in a real system you'd have an approval process
+        await interaction.response.send_message(
+            f"📝 **Unique Resource Proposal**\n"
+            f"**Name:** {name}\n"
+            f"**Description:** {description[:500]}{'...' if len(description) > 500 else ''}\n\n"
+            f"⏳ Pending admin approval. Use `/resources_add_unique` (admin only) to approve."
+        )
+
 async def setup(bot):
     await bot.add_cog(Army(bot))
