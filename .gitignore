@@ -67,3 +67,4 @@ yarn-error.log*
 *.tgz
 jspm_packages/
 .pyc
+.json
