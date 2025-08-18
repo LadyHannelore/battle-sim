@@ -1,0 +1,80 @@
+[
+  {
+    "id": "999999_1_vs_1000000_1",
+    "aggressor": 999999,
+    "defender": 1000000,
+    "winner": null,
+    "armies": [
+      {
+        "id": 1,
+        "owner": 999999,
+        "units": [
+          {
+            "type": "INFANTRY",
+            "count": 5
+          },
+          {
+            "type": "COMMANDER",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "owner": 1000000,
+        "units": [
+          {
+            "type": "INFANTRY",
+            "count": 5
+          },
+          {
+            "type": "COMMANDER",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "log": []
+  },
+  {
+    "id": "888888_1_vs_888889_1",
+    "aggressor": 888888,
+    "defender": 888889,
+    "winner": null,
+    "armies": [
+      {
+        "id": 1,
+        "owner": 888888,
+        "units": [
+          {
+            "type": "INFANTRY",
+            "count": 5
+          },
+          {
+            "type": "COMMANDER",
+            "count": 1
+          },
+          {
+            "type": "shock",
+            "count": 6
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "owner": 888889,
+        "units": [
+          {
+            "type": "INFANTRY",
+            "count": 5
+          },
+          {
+            "type": "COMMANDER",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "log": []
+  }
+]

@@ -33,14 +33,26 @@ class Battle:
         unit_source = None
         for army in player_armies:
             for unit in army['units']:
-                if unit['type'] == unit_type and unit['count'] > 0:
+                # Handle both string and enum unit types for comparison
+                unit_type_str = unit['type'].value if hasattr(unit['type'], 'value') else str(unit['type'])
+                search_type_str = unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
+                if unit_type_str == search_type_str and unit['count'] > 0:
                     unit_source = unit
                     break
             if unit_source:
                 break
         
         if not unit_source:
-            return {"success": False, "message": f"You do not have any available {unit_type} units to place."}
+            # Debug: Show what armies and units this player has
+            debug_armies = []
+            for army in player_armies:
+                units_info = []
+                for unit in army['units']:
+                    unit_type_str = unit['type'].value if hasattr(unit['type'], 'value') else str(unit['type'])
+                    units_info.append(f"{unit_type_str}:{unit['count']}")
+                debug_armies.append(f"Army {army.get('id', '?')}: [{', '.join(units_info)}]")
+            debug_msg = f"Available armies: {'; '.join(debug_armies)}" if debug_armies else "No armies found"
+            return {"success": False, "message": f"You do not have any available {unit_type} units to place. {debug_msg}"}
 
         unit_source['count'] -= 1
         self.board[y][x] = {
@@ -375,7 +387,9 @@ class GameState:
         remaining = self.armies[player_id]
         if not remaining:
             return {"success": True, "message": f"Army #{army_id} has been disbanded. You have no armies left."}
-        army_list = '\n'.join(f"Army #{a['id']}: " + ', '.join(f"{u['count']} {u['type']}" for u in a['units']) for a in remaining)
+        def unit_display_name(unit_type):
+            return unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
+        army_list = '\n'.join(f"Army #{a['id']}: " + ', '.join(f"{u['count']} {unit_display_name(u['type'])}" for u in a['units']) for a in remaining)
         try:
             from utils.sheets_sync import sync_army
             for a in remaining:
@@ -444,11 +458,13 @@ class GameState:
             print(f"[Sheets Sync] Failed to sync army: {e}")
 
         # Detailed info: show new army composition and resources
+        def unit_display_name(unit_type):
+            return unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
         unit_descriptions = []
         for u in new_units:
-            unit_descriptions.append(f"{u['count']} {u['type']}")
+            unit_descriptions.append(f"{u['count']} {unit_display_name(u['type'])}")
         units_text = ', '.join(unit_descriptions)
-        army_comp = ', '.join(f"{u['count']} {u['type']}" for u in army['units'])
+        army_comp = ', '.join(f"{u['count']} {unit_display_name(u['type'])}" for u in army['units'])
         resources_text = ', '.join(f"{k}: {v}" for k, v in player_resources.items())
         return {
             "success": True,
@@ -581,19 +597,25 @@ class GameState:
         }
 
     def start_battle(self, aggressor_army_id, defender_army_id):
-        aggressor_army = self.get_army(self.aggressor['id'], aggressor_army_id)
-        defender_army = self.get_army(self.defender['id'], defender_army_id)
+        # Get armies from global system instead of local game armies
+        aggressor_army = game_manager.get_global_army(self.aggressor['id'], aggressor_army_id)
+        defender_army = game_manager.get_global_army(self.defender['id'], defender_army_id)
+        
         if not aggressor_army:
             return {"success": False, "message": "Aggressor army not found."}
         if not defender_army:
             return {"success": False, "message": "Defender army not found."}
         if self.battle:
             return {"success": False, "message": "A battle is already in progress in this war."}
+        
         battle_armies = [aggressor_army, defender_army]
         self.battle = Battle(self.aggressor['id'], self.defender['id'], battle_armies)
+        
         # Detailed info: show both armies' compositions
         def army_comp(army):
-            return ', '.join(f"{u['count']} {u['type']}" for u in army['units'])
+            def unit_display_name(unit_type):
+                return unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
+            return ', '.join(f"{u['count']} {unit_display_name(u['type'])}" for u in army['units'])
         try:
             from utils.sheets_sync import sync_battle
             sync_battle({
@@ -759,7 +781,9 @@ class GameManager:
         remaining = player["armies"]
         if not remaining:
             return {"success": True, "message": f"Army #{army_id} has been disbanded. You have no armies left."}
-        army_list = '\n'.join(f"Army #{a['id']}: " + ', '.join(f"{u['count']} {u['type']}" for u in a['units']) for a in remaining)
+        def unit_display_name(unit_type):
+            return unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
+        army_list = '\n'.join(f"Army #{a['id']}: " + ', '.join(f"{u['count']} {unit_display_name(u['type'])}" for u in a['units']) for a in remaining)
         try:
             from utils.sheets_sync import sync_army
             for a in remaining:
@@ -830,11 +854,13 @@ class GameManager:
             print(f"[Sheets Sync] Failed to sync army: {e}")
 
         # Detailed info: show new army composition and resources
+        def unit_display_name(unit_type):
+            return unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
         unit_descriptions = []
         for u in new_units:
-            unit_descriptions.append(f"{u['count']} {u['type']}")
+            unit_descriptions.append(f"{u['count']} {unit_display_name(u['type'])}")
         units_text = ', '.join(unit_descriptions)
-        army_comp = ', '.join(f"{u['count']} {u['type']}" for u in army['units'])
+        army_comp = ', '.join(f"{u['count']} {unit_display_name(u['type'])}" for u in army['units'])
         resources_text = ', '.join(f"{k}: {v}" for k, v in player_resources.items() if isinstance(v, (int, float)))
         return {
             "success": True,

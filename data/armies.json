@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "owner": 12345,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "owner": 999999,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "owner": 1000000,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "owner": 888888,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      },
+      {
+        "type": "shock",
+        "count": 6
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "owner": 888888,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "owner": 888889,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      }
+    ]
+  }
+]
