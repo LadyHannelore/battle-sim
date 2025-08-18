@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "owner": 233520438242705408,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      },
+      {
+        "type": "archer",
+        "count": 6
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "owner": 1247614642470125649,
+    "units": [
+      {
+        "type": "INFANTRY",
+        "count": 5
+      },
+      {
+        "type": "COMMANDER",
+        "count": 1
+      },
+      {
+        "type": "cavalry",
+        "count": 4
+      }
+    ]
+  }
+]

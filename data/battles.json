@@ -1,0 +1,39 @@
+[
+  {
+    "id": "233520438242705408_1_vs_1247614642470125649_1",
+    "aggressor": 233520438242705408,
+    "defender": 1247614642470125649,
+    "winner": null,
+    "armies": [
+      {
+        "id": 1,
+        "owner": 233520438242705408,
+        "units": [
+          {
+            "type": "INFANTRY",
+            "count": 5
+          },
+          {
+            "type": "COMMANDER",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "owner": 1247614642470125649,
+        "units": [
+          {
+            "type": "INFANTRY",
+            "count": 5
+          },
+          {
+            "type": "COMMANDER",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "log": []
+  }
+]
