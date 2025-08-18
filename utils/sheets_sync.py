@@ -25,11 +25,25 @@ def _read_json(path: Path, default):
         return default
 
 
+
+def _enum_to_str(obj):
+    # Recursively convert enums to their value or name
+    if isinstance(obj, dict):
+        return {k: _enum_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_enum_to_str(v) for v in obj]
+    elif hasattr(obj, "__class__") and hasattr(obj, "name") and hasattr(obj, "value"):
+        # Enum type
+        return str(obj.value)
+    return obj
+
 def _atomic_write_json(path: Path, data) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     try:
+        # Convert enums to strings before saving
+        safe_data = _enum_to_str(data)
         with tmp.open("w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            json.dump(safe_data, f, ensure_ascii=False, indent=2)
         tmp.replace(path)
     except Exception as e:
         print(f"[Local Store] Failed to write {path.name}: {e}")
