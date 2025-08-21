@@ -33,10 +33,10 @@ class Battle:
         unit_source = None
         for army in player_armies:
             for unit in army['units']:
-                # Handle both string and enum unit types for comparison
+                # Handle both string and enum unit types for comparison (case-insensitive)
                 unit_type_str = unit['type'].value if hasattr(unit['type'], 'value') else str(unit['type'])
                 search_type_str = unit_type.value if hasattr(unit_type, 'value') else str(unit_type)
-                if unit_type_str == search_type_str and unit['count'] > 0:
+                if unit_type_str.upper() == search_type_str.upper() and unit['count'] > 0:
                     unit_source = unit
                     break
             if unit_source:
@@ -55,8 +55,20 @@ class Battle:
             return {"success": False, "message": f"You do not have any available {unit_type} units to place. {debug_msg}"}
 
         unit_source['count'] -= 1
+        # Convert unit_type to proper enum, handling case variations
+        if isinstance(unit_type, UnitType):
+            enum_unit_type = unit_type
+        else:
+            # Try to match the unit type case-insensitively
+            unit_type_upper = str(unit_type).upper()
+            try:
+                enum_unit_type = UnitType(unit_type_upper)
+            except ValueError:
+                # Fallback: try to find by name
+                enum_unit_type = next((ut for ut in UnitType if ut.value.upper() == unit_type_upper), UnitType.INFANTRY)
+        
         self.board[y][x] = {
-            "type": UnitType(unit_type) if not isinstance(unit_type, UnitType) else unit_type,
+            "type": enum_unit_type,
             "owner": player_id,
             "orientation": Orientation(orientation) if orientation else Orientation.NORTH,
             "has_acted": False,

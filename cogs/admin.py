@@ -9,28 +9,56 @@ class Admin(commands.Cog):
 
     def _is_admin(self, interaction: discord.Interaction) -> bool:
         """Check if user is bot owner or has 'mod' role."""
-        # Always allow bot owner
+        # Check if bot owner (multiple ways)
         if interaction.user.id == self.bot.owner_id:
+            print(f"[Debug] User {interaction.user.name} ({interaction.user.id}) is bot owner (owner_id)")
             return True
+        
+        # Additional owner check using application info
+        if hasattr(self.bot, 'application') and self.bot.application and self.bot.application.owner:
+            if interaction.user.id == self.bot.application.owner.id:
+                print(f"[Debug] User {interaction.user.name} ({interaction.user.id}) is bot owner (application)")
+                return True
         
         # Debug info
         print(f"[Debug] Checking admin for user {interaction.user.id} ({interaction.user.name})")
+        print(f"[Debug] Bot owner_id: {self.bot.owner_id}")
         
-        # Check if user is a Member (has roles) and has 'mod' role
-        if hasattr(interaction, 'guild') and interaction.guild:
-            member = interaction.guild.get_member(interaction.user.id)
-            if member and hasattr(member, 'roles'):
-                role_names = [role.name for role in member.roles]
-                print(f"[Debug] User roles: {role_names}")
-                # Check for mod role (case insensitive)
-                has_mod = any(role.name.lower() == 'mod' for role in member.roles)
-                print(f"[Debug] Has mod role: {has_mod}")
-                return has_mod
-            else:
-                print(f"[Debug] Member not found or no roles")
-        else:
+        # Check if we have guild context
+        if not interaction.guild:
             print(f"[Debug] No guild context")
+            return False
         
+        print(f"[Debug] Guild: {interaction.guild.name} ({interaction.guild.id})")
+        
+        # Try to get member object - interaction.user might be User instead of Member
+        member = None
+        if hasattr(interaction.user, 'roles'):
+            # User is already a Member object
+            member = interaction.user
+            print(f"[Debug] User is already Member object")
+        else:
+            # Get Member object from guild
+            member = interaction.guild.get_member(interaction.user.id)
+            print(f"[Debug] Retrieved member from guild: {member is not None}")
+        
+        if not member or not hasattr(member, 'roles'):
+            print(f"[Debug] Could not get member object with roles for user {interaction.user.id}")
+            return False
+        
+        # Check roles - cast to any to avoid type checker issues
+        member_roles = getattr(member, 'roles', [])
+        role_names = [role.name for role in member_roles]
+        print(f"[Debug] User roles: {role_names}")
+        
+        # Check for mod role (case insensitive)
+        for role in member_roles:
+            print(f"[Debug] Checking role: '{role.name}' (lower: '{role.name.lower()}')")
+            if role.name.lower() in ['mod', 'moderator', 'admin']:
+                print(f"[Debug] Found admin role: {role.name}")
+                return True
+        
+        print(f"[Debug] No admin role found for user {member.name}")
         return False
 
     @app_commands.command(name="sync", description="Sync slash commands with Discord (owner only)")
